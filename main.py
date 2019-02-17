@@ -17,7 +17,7 @@ batch_size = 20
 
 train_set, test_set = train_test_split(data, .3)
 train_ids = id_loaders(train_set.id, batch_size)
-test_ids = id_loaders(test_set.id, batch_size, shuffle=False)
+test_ids = id_loaders(test_set.id, batch_size)
 
 x = prepare_seq(data[MARKERS + ['id']], train_ids[0])
 model = BiRNN(input_size=7, hidden_size=1, num_layers=1, batch_size=20)

@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from torch.nn.utils.rnn import pack_sequence, pad_sequence, pack_padded_sequence
+from torch.nn.utils.rnn import pack_sequence
 
 
 def train_test_split(data, p=.3):

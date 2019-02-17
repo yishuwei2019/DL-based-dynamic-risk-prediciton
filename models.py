@@ -94,10 +94,22 @@ class DynamicDeepHit(nn.Module):
             [out[ii, :seq_len[ii] - 1, 0] for ii in range(len(seq_len))]
         )
 
-        cs_output = [self.cs_nets[ii](cs_input) for ii in range(self.num_event)]
-        cs_output = torch.stack(cs_output, dim=2)  # batch_size * target_len * num_event
-        cs_output = torch.unbind(cs_output)
-        cs_output = [softmax(cc.reshape((1, -1)), dim=1).reshape((self.target_len, self.num_event))
-                     for cc in cs_output]
-        cs_output = torch.stack(cs_output)  # batch_size * target_len * num_event
+        cs_output = [
+            self.cs_nets[ii](cs_input) for ii in range(self.num_event)
+        ]
+        cs_output = torch.unbind(
+            torch.stack(
+                cs_output,
+                dim=2
+            )  # batch_size * target_len * num_event
+        )
+        cs_output = torch.stack([
+            softmax(
+                cc.reshape((1, -1)),
+                dim=1
+            ).reshape(
+                (self.target_len, self.num_event)
+            )
+            for cc in cs_output
+        ])  # batch_size * target_len * num_event
         return marker_output, cs_output
