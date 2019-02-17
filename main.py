@@ -1,8 +1,10 @@
+import os
 import torch
+import pandas as pd
 from models import BiRNN, CsNet, DynamicDeepHit
 from data import (
-    data,
-    markers
+    FILE_DIR,
+    MARKERS
 )
 from utils import (
     train_test_split,
@@ -10,13 +12,14 @@ from utils import (
     prepare_seq
 )
 
+data = pd.read_pickle(os.path.join(FILE_DIR, 'data', 'data.pkl'))
 batch_size = 20
 
 train_set, test_set = train_test_split(data, .3)
 train_ids = id_loaders(train_set.id, batch_size)
 test_ids = id_loaders(test_set.id, batch_size, shuffle=False)
 
-x = prepare_seq(data[markers + ['id']], train_ids[0])
+x = prepare_seq(data[MARKERS + ['id']], train_ids[0])
 model = BiRNN(input_size=7, hidden_size=1, num_layers=1, batch_size=20)
 out, seq_len = model(x)
 cs_input = torch.stack(tuple([out[ii, seq_len[ii] - 1, :] for ii in range(len(seq_len))]))
