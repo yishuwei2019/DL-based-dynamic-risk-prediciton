@@ -17,6 +17,7 @@ def train_test_split(data, p=.3):
     return data.loc[data.id.isin(train_ids)], data.loc[data.id.isin(test_ids)]
 
 
+# noinspection PyIncorrectDocstring
 def id_loaders(ids, batch_size, shuffle=True):
     """return list id batches
     mimic torch.utils.data.dataloader

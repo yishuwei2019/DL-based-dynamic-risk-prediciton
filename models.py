@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence
-from torch.nn.functional import relu, elu
+from torch.nn.functional import relu, elu, softmax
 
 
 class BiRNN(nn.Module):
@@ -24,17 +24,12 @@ class BiRNN(nn.Module):
         # out: tensor (batch_size, seq_length, hidden_state * 2)
         # seq_len: seq_len info in the batch
         out, seq_len = pad_packed_sequence(out, batch_first=True, padding_value=-1)
-
-        # (x_M, h_{M-1}) pair for the cause specific input (batch_size * hidden_state)
-        # cs_input = torch.stack(tuple([out[ii, seq_len[ii] - 1, :] for ii in range(len(seq_len))]))
-        # longitudinal output (sum(seq_len) - batch_size) vector
-        # marker_output = torch.cat(tuple([out[ii, :seq_len[ii] - 1, 0] for ii in range(len(seq_len))]))
-
         return out, seq_len
 
 
 class CsNet(nn.Module):
     """cause specific network"""
+
     def __init__(self, input_size, layer1_size, layer2_size, output_size, dropout=.6):
         super(CsNet, self).__init__()
         self.input_size = input_size
@@ -54,5 +49,55 @@ class CsNet(nn.Module):
         x = elu(x)
         x = self.layer3(x)
         x = torch.tanh(x)
-
         return x
+
+
+class DynamicDeepHit(nn.Module):
+    def __init__(self, num_event, rnn_param, cs_param, target_len, dropout=.6):
+        # target_len: discrete future time slots
+        super(DynamicDeepHit, self).__init__()
+        if len(rnn_param) != 4:
+            raise ValueError("rnn parameter number is wrong")
+        if len(cs_param) != 2:
+            raise ValueError("cs parameter number is wrong")
+        self.num_event = num_event
+        self.rnn_param = rnn_param
+        self.cs_param = cs_param
+        self.target_len = target_len
+        self.dropout = dropout
+        self.rnn_net = BiRNN(
+            input_size=rnn_param[0],
+            hidden_size=rnn_param[1],
+            num_layers=rnn_param[2],
+            batch_size=rnn_param[3]
+        )
+        self.cs_nets = [
+            CsNet(
+                input_size=self.rnn_param[1] * 2,
+                layer1_size=self.cs_param[0],
+                layer2_size=self.cs_param[1],
+                output_size=self.target_len,
+                dropout=self.dropout
+            )
+            for _ in range(self.num_event)
+        ]
+
+    # noinspection PyTypeChecker
+    def forward(self, x):
+        out, seq_len = self.rnn_net(x)
+        # (x_M, h_{M-1}) pair for the cause specific input (batch_size, hidden_state * 2)
+        cs_input = torch.stack(
+            [out[ii, seq_len[ii] - 1, :] for ii in range(len(seq_len))]
+        )
+        # longitudinal output (sum(seq_len) - batch_size) vector
+        marker_output = torch.cat(
+            [out[ii, :seq_len[ii] - 1, 0] for ii in range(len(seq_len))]
+        )
+
+        cs_output = [self.cs_nets[ii](cs_input) for ii in range(self.num_event)]
+        cs_output = torch.stack(cs_output, dim=2)  # batch_size * target_len * num_event
+        cs_output = torch.unbind(cs_output)
+        cs_output = [softmax(cc.reshape((1, -1)), dim=1).reshape((self.target_len, self.num_event))
+                     for cc in cs_output]
+        cs_output = torch.stack(cs_output)  # batch_size * target_len * num_event
+        return marker_output, cs_output
