@@ -84,6 +84,10 @@ class DynamicDeepHit(nn.Module):
 
     # noinspection PyTypeChecker
     def forward(self, x):
+        """
+        :param x: packed sequence
+        :return:
+        """
         out, seq_len = self.rnn_net(x)
         # (x_M, h_{M-1}) pair for the cause specific input (batch_size, hidden_state * 2)
         cs_input = torch.stack(
@@ -113,3 +117,30 @@ class DynamicDeepHit(nn.Module):
             for cc in cs_output
         ])  # batch_size * target_len * num_event
         return marker_output, cs_output
+
+
+def loss_1(cs_output, label):
+    """log-likelihood loss for survival time
+
+    :param cs_output: batch_size * len(target_time) * num_event
+    :param label: batch_size * len(target_time) * (num_event + 1)
+    :return:
+    """
+    censor_prob = torch.add(
+        torch.ones(*cs_output.size()[:-1]),
+        torch.neg(torch.cumsum(torch.sum(cs_output, dim=2), dim=1))
+    )
+    cs_output = torch.cat(
+        (cs_output,
+         torch.ones_like(cs_output[:, :, 0:1])),
+        dim=2
+    )
+    lks = torch.pow(
+        torch.mul(
+            torch.unsqueeze(censor_prob, dim=2).expand_as(label),
+            cs_output
+        ),
+        label
+    )
+
+    return torch.neg(torch.log(lks).sum())

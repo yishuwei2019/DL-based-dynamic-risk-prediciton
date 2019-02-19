@@ -59,11 +59,13 @@ RACE_CODE = {
     'HISPANIC': 2,
     'ASIAN': 3,
 }
+
 EDUCATION_CODE = {
     'high school/ged': 0,
     'college or high': 1,
     'less than high school': 2,
 }
+
 COHORT_CODE = {
     'CARIDA': 0,
     'CHS': 1,
@@ -80,11 +82,12 @@ data = pd.read_csv(os.path.join(FILE_DIR, 'data', 'LRPP_updated.csv'), delimiter
 data = data.rename(columns={'ID_d': 'id'})
 
 # code string variable to numeric
-data.RACE = pd.to_numeric(data.RACE.replace(RACE_CODE))
-data.EDU_G = pd.to_numeric(data.EDU_G.replace(EDUCATION_CODE))
-data.COHORT = pd.to_numeric(data.COHORT.replace(COHORT_CODE))
+data.loc[:, ['RACE', 'EDU_G', 'COHORT']] = pd.DataFrame.from_dict({
+    "RACE": pd.to_numeric(data.RACE.replace(RACE_CODE)),
+    "EDU_G": pd.to_numeric(data.EDU_G.replace(EDUCATION_CODE)),
+    "COHORT": pd.to_numeric(data.COHORT.replace(COHORT_CODE)),
+})
 
-# create time delta and time since study
 data['delta'] = data.groupby('id')['age'].diff().fillna(0)  # delta time
 data['time'] = data.groupby('id')['delta'].cumsum()  # time since come to study
 
