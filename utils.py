@@ -25,9 +25,11 @@ def id_loaders(ids, batch_size, shuffle=True):
     :param ids: pd.series
     :return: list of array of size batch_size
     """
+    ids = ids.unique().flatten()
     if shuffle:
-        ids = ids.sample(frac=1).values
-    return [ids[i:i + batch_size] for i in range(0, len(ids), batch_size)]
+        ids = np.random.choice(ids, len(ids), replace=False)
+    ids_list = [ids[i:i + batch_size] for i in range(0, len(ids), batch_size)]
+    return ids_list[:-1]
 
 
 def prepare_seq(data, ids):

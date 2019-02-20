@@ -2,3 +2,5 @@
 .idea/
 data/*
 __pycache__/
+
+debug/*

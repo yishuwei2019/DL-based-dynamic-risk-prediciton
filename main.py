@@ -1,14 +1,17 @@
-import os
+# noinspection SpellCheckingInspection
 import torch
-import numpy as np
-import pandas as pd
+import os
+import pickle
+import torch.optim as optim
 from models import (
     DynamicDeepHit,
-    loss_1
+    deephit_loss,
 )
-from data import (
-    FILE_DIR,
-    MARKERS
+from common import MARKERS, FILE_DIR
+from discrete_data import (
+    data,
+    target_time,
+    CODE_POS,
 )
 from utils import (
     train_test_split,
@@ -17,36 +20,57 @@ from utils import (
     prepare_seq,
 )
 
-# please do integer based
-# it's assumed that all subjects experiences an event before end point
-TARGET_START = 20
-TARGET_END = 50
-target_time = np.arange(TARGET_START, TARGET_END + 1)
-CODE_POS = {
-    '3': 0,  # stroke
-    '4': 1,  # chf
-    '5': 2,  # mi
-}
 
-data = pd.read_pickle(os.path.join(FILE_DIR, 'data', 'data.pkl'))
-data = data[data.event_time > TARGET_START]
-# round event time and record the index with respect to target_time
-data.event_time = (data.event_time.round() - TARGET_START).astype('int32')
-data_s = data[['id', 'event', 'event_time']].groupby('id').head(1).set_index('id')
+# noinspection PyShadowingNames
+def train(model, train_set, batch_size=200, n_epochs=1, learning_rate=1e-3):
+    train_short = train_set[['id', 'event', 'event_time']].groupby('id').head(1).set_index('id')
+    train_loss = []
 
-batch_size = 20
+    for _epoch in range(n_epochs):
+        print("*************** new epoch ******************")
+        train_ids = id_loaders(train_set.id, batch_size)
+        print("batch number:", len(train_ids))
+        count = 0
 
-train_set, test_set = train_test_split(data, .3)
-train_ids = id_loaders(train_set.id, batch_size)
-test_ids = id_loaders(test_set.id, batch_size)
+        for ids in train_ids:
+            ids_b, x = prepare_seq(train_set[MARKERS + ['id']], ids)
+            train_short_b = train_short.loc[ids_b, :]
+            label_b = prepare_label(train_short_b, CODE_POS, len(target_time))
 
-ids_b, x = prepare_seq(data[MARKERS + ['id']], train_ids[0])
-d_model = DynamicDeepHit(num_event=3, rnn_param=[7, 1, 1, 20], cs_param=[3, 3],
-                         target_len=len(target_time))
-marker_output, cs_output = d_model(x)
-data_s_b = data_s.loc[ids_b, :]
+            optimizer.zero_grad()
+            marker_output, cs_output = model(x)
+            loss_b = deephit_loss(cs_output, label_b)
+            if torch.isnan(loss_b).any():
+                with open("./debug/ids.txt", "wb") as fp:
+                    pickle.dump(ids, fp)
+                train_set.to_pickle(os.path.join(FILE_DIR, 'debug', 'train_set.pkl'))
+                exit()
 
-label_b = prepare_label(data_s_b, CODE_POS, len(target_time))
-l1 = loss_1(cs_output, label_b)
-print(l1)
+            loss_b.backward()
+            optimizer.step()
+            train_loss += loss_b.tolist()
+            count += 1
+            if count % 10 == 0:
+                print("10 batch trained")
+                print(train_loss[-10:-1])
+
+    return train_loss
+
+
+if __name__ == '__main__':
+    batch_size = 20
+    n_epochs = 1
+    learning_rate = 1e-4
+    model = DynamicDeepHit(
+        num_event=3,
+        rnn_param=[len(MARKERS), 1, 1, batch_size],
+        cs_param=[3, 3],
+        target_len=len(target_time)
+    )
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    train_set, test_set = train_test_split(data, .3)
+    test_ids = id_loaders(test_set.id, batch_size)
+    train_loss = train(model, train_set, batch_size=batch_size)
+    print(train_loss)
 

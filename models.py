@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence
@@ -45,8 +46,8 @@ class CsNet(nn.Module):
         # x: batch_size * input_features
         x = self.layer1(x)
         x = relu(x)
-        x = self.layer2(x)
-        x = elu(x)
+        # x = self.layer2(x)
+        # x = elu(x)
         x = self.layer3(x)
         x = torch.tanh(x)
         return x
@@ -119,11 +120,13 @@ class DynamicDeepHit(nn.Module):
         return marker_output, cs_output
 
 
-def loss_1(cs_output, label):
-    """log-likelihood loss for survival time
+# noinspection PyTypeChecker
+def deephit_loss(cs_output, label, alpha=0.00001):
+    """survival likelihood loss + concordance index loss
 
     :param cs_output: batch_size * len(target_time) * num_event
     :param label: batch_size * len(target_time) * (num_event + 1)
+    :param alpha: weight for loss_2
     :return:
     """
     censor_prob = torch.add(
@@ -135,12 +138,35 @@ def loss_1(cs_output, label):
          torch.ones_like(cs_output[:, :, 0:1])),
         dim=2
     )
-    lks = torch.pow(
+    p_obs = torch.mul(
         torch.mul(
             torch.unsqueeze(censor_prob, dim=2).expand_as(label),
             cs_output
         ),
         label
     )
+    p_obs = torch.sum(p_obs, dim=2)  # vector of batch_size
+    loss_1 = torch.neg(torch.log(torch.sum(p_obs, dim=1)).sum())  # survival likelihood
 
-    return torch.neg(torch.log(lks).sum())
+    loss_2 = torch.zeros(1)
+
+    event_times = torch.nonzero(label)[:, 1].tolist()
+    event_index = torch.nonzero(
+        torch.nonzero(label)[:, 2] - label.shape[2] + 1
+    )[:, 0].tolist()
+
+    for ii in event_index:
+        for jj in range(len(event_times)):
+            tii, tjj = event_times[ii], event_times[jj]
+            loss_2 = loss_2 + np.sign(tii - tjj) * torch.exp(p_obs[ii, tii] - p_obs[jj, tii])
+
+    return torch.add(loss_1, alpha * loss_2)
+
+
+
+
+
+
+
+
+
