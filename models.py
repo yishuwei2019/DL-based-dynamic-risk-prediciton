@@ -74,7 +74,7 @@ class DynamicDeepHit(nn.Module):
         )
         self.cs_nets = [
             CsNet(
-                input_size=self.rnn_param[1] * 2,
+                input_size=self.rnn_param[1] * 2 - 1,
                 layer1_size=self.cs_param[0],
                 layer2_size=self.cs_param[1],
                 output_size=self.target_len,
@@ -92,7 +92,7 @@ class DynamicDeepHit(nn.Module):
         out, seq_len = self.rnn_net(x)
         # (x_M, h_{M-1}) pair for the cause specific input (batch_size, hidden_state * 2)
         cs_input = torch.stack(
-            [out[ii, seq_len[ii] - 1, :] for ii in range(len(seq_len))]
+            [out[ii, seq_len[ii] - 1, 1:] for ii in range(len(seq_len))]
         )
         # longitudinal output (sum(seq_len) - batch_size) vector
         marker_output = torch.cat(
@@ -121,7 +121,7 @@ class DynamicDeepHit(nn.Module):
 
 
 # noinspection PyTypeChecker
-def deephit_loss(cs_output, label, alpha=0.00001):
+def deephit_loss(cs_output, label, alpha=0.0001):
     """survival likelihood loss + concordance index loss
 
     :param cs_output: batch_size * len(target_time) * num_event
