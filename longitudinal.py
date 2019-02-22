@@ -27,54 +27,59 @@ data.SBP_y = (data.SBP_y - data.SBP_y.mean()) / data.SBP_y.std()
 
 
 # noinspection PyShadowingNames
-def train(model, train_set, batch_size=20, n_epochs=1):
+def train(model, train_set, batch_size=20):
     train_loss = []
+    train_ids = id_loaders(train_set.id, batch_size)
+    print("train batch number:", len(train_ids))
 
-    for _epoch in range(n_epochs):
-        if _epoch < 3:
-            scheduler.step()
-        print("*************** new epoch ******************")
-        for param_group in optimizer.param_groups:
-            print("learning rate:")
-            print(param_group['lr'])
-        train_ids = id_loaders(train_set.id, batch_size)
-        print("batch number:", len(train_ids))
-        print("********************************************")
+    count = 0
+    for ids in train_ids:
+        feature_b, marker_b = prepare_seq(
+            data=data,
+            ids=ids,
+            feature_names=FEATURE_LIST,
+            label_name='SBP_y'
+        )
+        marker_output = model(feature_b)
+        marker_b = marker_b.contiguous().view(-1)
+        # delete the padding part
+        marker_output = marker_output.contiguous().view(-1)[torch.nonzero(marker_b)]
+        marker_b = marker_b[torch.nonzero(marker_b)]
 
-        count = 0
-        for ids in train_ids:
-            feature_b, marker_b = prepare_seq(
-                data=data,
-                ids=ids,
-                feature_names=FEATURE_LIST,
-                label_name='SBP_y'
-            )
-            marker_output = model(feature_b)
-            marker_output = marker_output.contiguous().view(-1)
-            marker_b = marker_b.contiguous().view(-1)
-            marker_output = marker_output[torch.nonzero(marker_b)]
-            marker_b = marker_b[torch.nonzero(marker_b)]
+        optimizer.zero_grad()
+        loss = mse_loss(marker_output, marker_b)
+        loss.backward()
+        optimizer.step()
 
-            optimizer.zero_grad()
-            loss = mse_loss(marker_output, marker_b)
-            loss.backward()
-            optimizer.step()
-
-            train_loss += [loss.tolist()]
-            count += 1
-
-            if count % 10 == 0:
-                print("10 batches trained")
-                print(sum(train_loss[-9:-1]))
-                # print(model.state_dict())
-                # plt.close("all")
-                # plt.plot(range(count), train_loss)
-                # plt.title("training error")
-                # plt.xlabel("batch size")
-                # plt.ylabel("error")
-                # plt.show(block=False)
-
+        train_loss += [loss.tolist()]
+        count += 1
+        if count % 10 == 0:
+            print("10 batches trained:", sum(train_loss[-9:-1]))
+            # print(model.state_dict())
     return train_loss
+
+
+# noinspection PyShadowingNames
+def test(model, test_set, batch_size=20):
+    test_loss = []
+    test_ids = id_loaders(test_set.id, batch_size)
+    print("test batch number:", len(test_ids))
+
+    for ids in test_ids:
+        feature_b, marker_b = prepare_seq(
+            data=data,
+            ids=ids,
+            feature_names=FEATURE_LIST,
+            label_name='SBP_y'
+        )
+        marker_output = model(feature_b)
+        marker_b = marker_b.contiguous().view(-1)
+        # delete the padding part
+        marker_output = marker_output.contiguous().view(-1)[torch.nonzero(marker_b)]
+        marker_b = marker_b[torch.nonzero(marker_b)]
+        test_loss += [mse_loss(marker_output, marker_b).tolist()]
+
+    return test_loss
 
 
 if __name__ == '__main__':
@@ -91,8 +96,15 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 1, gamma=.1)
     train_set, test_set = train_test_split(data, .3)
-    test_ids = id_loaders(test_set.id, batch_size)
-    train_loss = train(model, train_set, batch_size=batch_size, n_epochs=n_epochs)
 
-
+    for epoch in range(n_epochs):
+        if epoch < 3:
+            scheduler.step()
+        print("*************** new epoch ******************")
+        for param_group in optimizer.param_groups:
+            print("learning rate:")
+            print(param_group['lr'])
+            train_loss = train(model, train_set, batch_size=batch_size)
+            test_loss = test(model, test_set, batch_size=batch_size)
+        print("********************************************")
 
