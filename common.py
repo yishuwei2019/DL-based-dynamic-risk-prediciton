@@ -1,5 +1,4 @@
 __all__ = [
-    'FILE_DIR',
     'BASE_COVS',
     'COVS',
     'MARKERS',
@@ -12,17 +11,13 @@ __all__ = [
     'COHORT_CODE'
 ]
 
-import os
-
-FILE_DIR = os.path.dirname(__file__)
-
 # 'CVD_DTH', 'CHD_DTH' not included
 BASE_COVS = [
-    'BIRTHYR',
+    # 'BIRTHYR',
     'RACE',
     'male',
     'EDU_G',
-    'COHORT',
+    # 'COHORT',
 ]
 
 COVS = [

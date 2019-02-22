@@ -2,6 +2,7 @@ import pandas as pd
 import os
 from common import *
 
+FILE_DIR = os.path.dirname(__file__)
 data = pd.read_csv(os.path.join(FILE_DIR, 'data', 'LRPP_updated.csv'), delimiter=',')
 data = data.rename(columns={'ID_d': 'id'})
 
@@ -17,7 +18,7 @@ data['time'] = data.groupby('id')['delta'].cumsum()  # time since come to study
 
 # next marker in the sequence as response
 for marker in MARKERS:
-    data[marker + '_y'] = data.groupby('id')[marker].shift(-1)
+    data[marker + '_y'] = data.groupby('id')[marker].shift(-1).fillna(0)
 data = data.fillna(method="ffill")
 
 # frame into multiple event setting
@@ -31,5 +32,9 @@ data_s.loc[data_s.event == 1, 'event'] = data_s.loc[
     axis='columns').map(EVENT_CODE)
 data = data.merge(data_s[['id', 'event', 'event_time']], on='id', how='left')
 data = data[data.time <= data.event_time]
+data = data[data.id.duplicated(keep=False)]
 
 data.to_pickle(os.path.join(FILE_DIR, 'data', 'data.pkl'))
+
+
+
