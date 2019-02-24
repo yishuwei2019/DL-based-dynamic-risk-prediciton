@@ -32,6 +32,7 @@ def id_loaders(ids, batch_size, shuffle=True):
     return ids_list[:-1]
 
 
+# noinspection PyIncorrectDocstring
 def prepare_seq(data, ids, feature_names, label_name):
     """prepare packed sequence for rnn input
         data must have a column of id
