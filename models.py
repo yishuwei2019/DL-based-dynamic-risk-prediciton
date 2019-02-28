@@ -24,7 +24,7 @@ class CoxPH(nn.Module):
     # noinspection PyArgumentList
     def __init__(self, input_size, size_1, output_size, n_time_units):
         super(CoxPH, self).__init__()
-        self.Sigmoid = nn.Sigmoid()
+        self.softmax = nn.Softmax(dim=1)
         self.fc_layer = nn.Sequential(
             nn.Linear(input_size, size_1),
             nn.ReLU(),
@@ -33,13 +33,13 @@ class CoxPH(nn.Module):
         )
         self.fc_layer2 = nn.Linear(1, n_time_units)
         self.beta = nn.Parameter(torch.Tensor(output_size, 1))
-        self.beta.data.uniform_(-.001, .001)
+        self.beta.data.uniform_(-10, 10)
 
     def forward(self, x):
         x = self.fc_layer(x)
         # time invariant hazard ratio
         hazard_ratio = torch.exp(x.mm(self.beta))
         # predicted probability for each time unit
-        preds = self.Sigmoid(self.fc_layer2(hazard_ratio))
+        preds = self.softmax(self.fc_layer2(hazard_ratio))
         return hazard_ratio[:, 0], preds
 

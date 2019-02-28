@@ -15,11 +15,13 @@ data.loc[:, ['RACE', 'EDU_G', 'COHORT']] = pd.DataFrame.from_dict({
 
 data['delta'] = data.groupby('id')['age'].diff().fillna(0)  # delta time
 data['time'] = data.groupby('id')['delta'].cumsum()  # time since come to study
+for key, value in MARKER_MAX.items():
+    data[key] = data[key].apply(lambda x: min(x * 1.0 / value, 1))
 
 # next marker in the sequence as response
 for marker in MARKERS:
     data[marker + '_y'] = data.groupby('id')[marker].shift(-1).fillna(0)
-data = data.fillna(method="ffill")
+data = data.fillna(method='ffill')
 
 # frame into multiple event setting
 # event: event code for the first incident / 0 for censoring

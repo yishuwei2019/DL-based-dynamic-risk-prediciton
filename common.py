@@ -1,6 +1,7 @@
 __all__ = [
+    'TOL',
     'BASE_COVS',
-    'COVS',
+    'INDICATORS',
     'MARKERS',
     'MULTI_TIMES',
     'MULTI_EVENTS',
@@ -8,8 +9,11 @@ __all__ = [
     'EDUCATION_CODE',
     'RACE_CODE',
     'ET_PAIRS',
-    'COHORT_CODE'
+    'COHORT_CODE',
+    'MARKER_MAX',
 ]
+
+TOL = .0001  # tolerance for comparing between floats
 
 # 'CVD_DTH', 'CHD_DTH' not included
 BASE_COVS = [
@@ -20,8 +24,7 @@ BASE_COVS = [
     # 'COHORT',
 ]
 
-COVS = [
-    'age',
+INDICATORS = [
     'RXCHL',
     'RXHYP',
     'SMOKER',
@@ -36,6 +39,7 @@ MARKERS = [
     'SBP',
     'DBP',
     # 'GLUCOSE',
+    'age',
 ]
 
 MULTI_EVENTS = [
@@ -85,3 +89,14 @@ COHORT_CODE = {
 }
 
 MULTI_TIMES = [ET_PAIRS[e] for e in MULTI_EVENTS]
+
+
+MARKER_MAX = {
+    'BMINOW': 100,
+    'TOTCHL': 500,
+    'LDLCHL': 500,
+    'HDLCHL': 250,
+    'SBP': 300,
+    'DBP': 170,
+    'age': 100,
+}
