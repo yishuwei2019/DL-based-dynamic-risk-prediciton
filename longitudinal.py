@@ -1,7 +1,6 @@
 # noinspection SpellCheckingInspection
 import os
 import pandas as pd
-import matplotlib.pyplot as plt
 import torch
 import torch.optim as optim
 from torch.nn.functional import mse_loss
@@ -15,7 +14,7 @@ from utils import (
 
 TARGET_START = 20
 TARGET_END = 50
-FEATURE_LIST = MARKERS + COVS + BASE_COVS
+FEATURE_LIST = MARKERS + INDICATORS + BASE_COVS
 FILE_DIR = os.path.dirname(__file__)
 data = pd.read_pickle(os.path.join(FILE_DIR, 'data', 'data.pkl'))
 data = data[data.event_time > TARGET_START]
@@ -83,7 +82,7 @@ def test(model, test_set, batch_size=20):
 
 
 if __name__ == '__main__':
-    batch_size = 200
+    batch_size = 50
     n_epochs = 10
     learning_rate = .01
     model = LongRNN(

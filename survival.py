@@ -1,14 +1,15 @@
 import os
 import pandas as pd
 import torch
+import torch.nn as nn
 import torch.optim as optim
+from copy import deepcopy
 from common import *
-from models import CoxPH
+from models import SurvDl
 from preprocess import survival_preprocess
-from loss import (
-    coxph_logparlk,
-    sigmoid_concordance_loss,
-    c_index
+from loss_original import (
+    c_index,
+    log_parlik,
 )
 from utils import (
     train_test_split,
@@ -39,11 +40,13 @@ def train(model, train_set, batch_size=100):
             torch.tensor(data_b.loc[:, FEATURE_LIST].values.astype(float), dtype=torch.float32))
         event = data_b.event.values.astype(int)
         event_time = data_b.event_time.values.astype(int)
+        censor = torch.tensor(event)
+        lifetime = torch.tensor(event_time)
+        exit()
 
-        l1 = coxph_logparlk(event_time, event, hazard_ratio)
+        l1 = log_parlik(event_time, event, hazard_ratio)
         l2 = sigmoid_concordance_loss(event_time, event, preds)
         loss = torch.add(l1, 10000 * l2)
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -82,33 +85,45 @@ def test(model, test_set, batch_size=200):
 
 
 if __name__ == '__main__':
-    batch_size = 30
+    d_in, h, d_out = 21, 128, 32
+    batch_size = 32
+    num_time_units = 24  # 24 months
+    time_bin = 30
     n_epochs = 20
-    learning_rate = .01
-    model = CoxPH(
-        input_size=data.shape[1] - 3,  # depends on dataset
-        size_1=128,
-        output_size=32,
-        n_time_units=TARGET_END,
-    )
+    learning_rate = 1e-3
+    model = SurvDl(d_in, h, d_out, num_time_units)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 4, gamma=.1)
     train_set, test_set = train_test_split(data, .3)
+    train_set = train_set.head(100)
+
+    data_train = torch.from_numpy(train_set.loc[:, FEATURE_LIST].values.astype('float')).type(
+        torch.FloatTensor)
+    lifetime_train = torch.from_numpy(train_set.event_time.values.astype('int32')).type(
+        torch.FloatTensor)
+    censor_train = torch.from_numpy(train_set.event.values.astype('int32')).type(torch.FloatTensor)
+    score1_train, score2_train = model(data_train)
+
+    exit()
+
+    data_test = torch.from_numpy(test_set.loc[:, FEATURE_LIST].values.astype('float')).type(
+        torch.FloatTensor)
+    lifetime_test = torch.from_numpy(test_set.event_time.values.astype('int32')).type(
+        torch.FloatTensor)
+    censor_test = torch.from_numpy(test_set.event.values.astype('int32')).type(torch.FloatTensor)
+    print(data_test.size())
+    print(lifetime_test.size())
+    print(censor_test.size())
+    exit()
 
     for epoch in range(n_epochs):
         if epoch < 15:
-            # scheduler.step()
-            None
+            scheduler.step()
         print("*************** new epoch ******************")
         for param_group in optimizer.param_groups:
             print("learning rate:", param_group['lr'])
-            train_loss = train(model, train_set, batch_size=batch_size)
-            test_loss = test(model, test_set, batch_size=batch_size * 2)
+        train_loss = train(model, train_set, batch_size=batch_size)
+        test_loss = test(model, test_set, batch_size=batch_size * 2)
 
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict()
-        }, os.path.join(os.path.dirname(__file__), 'longitudinal_model.pth'))
 
