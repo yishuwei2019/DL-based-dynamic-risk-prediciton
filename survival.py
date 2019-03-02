@@ -1,20 +1,18 @@
 import os
+import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 import torch.optim as optim
-from copy import deepcopy
 from common import *
 from models import SurvDl
 from preprocess import survival_preprocess
 from loss_original import (
     c_index,
     log_parlik,
+    rank_loss,
 )
-from utils import (
-    train_test_split,
-    id_loaders
-)
+from loss import coxph_logparlk
+from utils import train_test_split
 
 TRUNCATE_TIME = 10
 TARGET_END = 30
@@ -28,94 +26,81 @@ FEATURE_LIST = data.columns[3:]
 
 
 # noinspection PyShadowingNames
-def train(model, train_set, batch_size=100):
-    train_loss = []
-    train_ids = id_loaders(train_set.id, batch_size)
-    print("train batch number:", len(train_ids))
+def train(batch_size=100):
+    model.train()
+    train_loss1 = []
+    train_loss2 = []
+    idx = np.random.permutation(x_train.shape[0])
 
     count = 0
-    for ids in train_ids:
-        data_b = data[data.id.isin(ids)]
-        hazard_ratio, preds = model(
-            torch.tensor(data_b.loc[:, FEATURE_LIST].values.astype(float), dtype=torch.float32))
-        event = data_b.event.values.astype(int)
-        event_time = data_b.event_time.values.astype(int)
-        censor = torch.tensor(event)
-        lifetime = torch.tensor(event_time)
-        exit()
-
-        l1 = log_parlik(event_time, event, hazard_ratio)
-        l2 = sigmoid_concordance_loss(event_time, event, preds)
-        loss = torch.add(l1, 10000 * l2)
+    while count < len(idx) / batch_size:
+        x = x_train[count * batch_size: (count + 1) * batch_size, :]
+        lifetime = lifetime_train[count * batch_size: (count + 1) * batch_size]
+        censor = censor_train[count * batch_size: (count + 1) * batch_size]
         optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        score1, score2 = model(x)
+        loss1 = log_parlik(lifetime, censor, score1)
+        # loss1 = coxph_logparlk(lifetime.numpy(), censor.numpy(), score1)
+        loss2 = sum(
+            [rank_loss(lifetime, censor, score2, t + 1, time_bin) for t in range(num_time_units)])
 
-        train_loss += [loss.tolist()]
+        loss = 1.0 * loss1
+        loss.backward()
+        train_loss1 += [loss1.data]
+        train_loss2 += [loss2.data]
+        optimizer.step()
         count += 1
-        if count % 10 == 0:
-            # print("10 batches trained:", sum(train_loss[-9:-1]))
-            None
-    return train_loss
+        print("train loss 1", train_loss1[-1])
+        print("train loss 2", train_loss2[-1])
+    return train_loss1, train_loss2
 
 
 # noinspection PyShadowingNames
-def test(model, test_set, batch_size=200):
-    loss_1 = 0
-    loss_2 = 0
-    cindex = 0
-    test_ids = id_loaders(test_set.id, batch_size)
+def test(batch_size=200):
+    model.eval()
+    test_loss = []
+    count = 0
+    while count < x_test.shape[0] / batch_size:
+        x = x_test[count * batch_size: (count + 1) * batch_size, :]
+        lifetime = lifetime_test[count * batch_size: (count + 1) * batch_size]
+        censor = censor_test[count * batch_size: (count + 1) * batch_size]
+        score1, score2 = model(x)
+        loss1 = log_parlik(lifetime, censor, score1)
+        loss2 = sum(
+            [rank_loss(lifetime, censor, score2, t + 1, time_bin) for t in range(num_time_units)])
+        loss = 1.0 * loss1 + .5 * loss2
+        test_loss += [loss.data[0]]
+        count += 1
 
-    for ids in test_ids:
-        data_b = data[data.id.isin(ids)]
-        hazard_ratio, preds = model(
-            torch.tensor(data_b.loc[:, FEATURE_LIST].values.astype(float), dtype=torch.float32))
-        event = data_b.event.values.astype(int)
-        event_time = data_b.event_time.values.astype(int)
-
-        loss_1 = loss_1 + coxph_logparlk(event_time, event, hazard_ratio)
-        loss_2 = loss_2 + sigmoid_concordance_loss(event_time, event, preds)
-        cindex = cindex + c_index(event_time, event, hazard_ratio)
-
-    loss_1, loss_2, cindex = loss_1 / len(test_ids), loss_2 / len(test_ids), cindex / len(test_ids)
-    print("loss_1:", loss_1)
-    print("loss_2:", loss_2)
-    print("cindex:", cindex)
-    return loss_1, loss_2, cindex
+        print(test_loss[-1])
+    return test_loss
 
 
 if __name__ == '__main__':
     d_in, h, d_out = 21, 128, 32
-    batch_size = 32
+    batch_size = 200
     num_time_units = 24  # 24 months
     time_bin = 30
     n_epochs = 20
-    learning_rate = 1e-3
+    learning_rate = .001
     model = SurvDl(d_in, h, d_out, num_time_units)
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, 4, gamma=.1)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, 3, gamma=.1)
     train_set, test_set = train_test_split(data, .3)
-    train_set = train_set.head(100)
+    train_set = train_set
 
-    data_train = torch.from_numpy(train_set.loc[:, FEATURE_LIST].values.astype('float')).type(
+    x_train = torch.from_numpy(train_set.loc[:, FEATURE_LIST].values.astype('float')).type(
         torch.FloatTensor)
     lifetime_train = torch.from_numpy(train_set.event_time.values.astype('int32')).type(
         torch.FloatTensor)
     censor_train = torch.from_numpy(train_set.event.values.astype('int32')).type(torch.FloatTensor)
-    score1_train, score2_train = model(data_train)
 
-    exit()
-
-    data_test = torch.from_numpy(test_set.loc[:, FEATURE_LIST].values.astype('float')).type(
+    x_test = torch.from_numpy(test_set.loc[:, FEATURE_LIST].values.astype('float')).type(
         torch.FloatTensor)
     lifetime_test = torch.from_numpy(test_set.event_time.values.astype('int32')).type(
         torch.FloatTensor)
     censor_test = torch.from_numpy(test_set.event.values.astype('int32')).type(torch.FloatTensor)
-    print(data_test.size())
-    print(lifetime_test.size())
-    print(censor_test.size())
-    exit()
 
     for epoch in range(n_epochs):
         if epoch < 15:
@@ -123,7 +108,7 @@ if __name__ == '__main__':
         print("*************** new epoch ******************")
         for param_group in optimizer.param_groups:
             print("learning rate:", param_group['lr'])
-        train_loss = train(model, train_set, batch_size=batch_size)
-        test_loss = test(model, test_set, batch_size=batch_size * 2)
+        train_loss = train(batch_size=batch_size)
+        test_loss = test(batch_size=batch_size * 2)
 
 
