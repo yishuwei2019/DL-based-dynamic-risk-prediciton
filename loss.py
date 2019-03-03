@@ -21,11 +21,16 @@ def coxph_logparlk(event_time, event, hazard_ratio):
             (abs(event_time[ii] - j) < TOL and event[ii] > 0) for ii in range(len(event))
         ])  # H in original code (which subject has event at that time)
         """original paper didn't consider censored sample
-        sum_plus = sum(hazard_ratio[np.array(
-            [(event_time[ii] - j) > -TOL for ii in range(len(event))])])
+        sum_plus = hazard_ratio[np.where(
+            [(event_time[ii] - j) > -TOL for ii in range(len(event))])].sum()
         """
         sum_plus = hazard_ratio[np.where(
+            [(event_time[ii] - j) > -TOL for ii in range(len(event))])].sum()
+
+        """original paper's version 
+        sum_plus = hazard_ratio[np.where(
             [(event_time[ii] - j) > -TOL and event[ii] == 1 for ii in range(len(event))])].sum()
+        """
         subtotal_1 = torch.log(hazard_ratio[index_j]).sum()
 
         # subtotal_2 = np.sum(index_j) * np.log(sum_plus)  # if no Efron correction considered

@@ -24,22 +24,23 @@ class LongRNN(nn.Module):
 class SurvDl(nn.Module):
     def __init__(self, d_in, h, d_out, num_time_units):
         super(SurvDl, self).__init__()
-        self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
         self.fc_layer = nn.Sequential(nn.Linear(d_in, h), nn.ReLU(), nn.Dropout(0.5),
                                       nn.Linear(h, d_out))
-        self.fc_layer2 = nn.Linear(1, num_time_units)
+        # self.fc_layer2 = nn.Linear(1, num_time_units)
         self.beta = Parameter(torch.Tensor(d_out, 1))
         self.beta.data.uniform_(-0.001, 0.001)
 
     def score_1(self, x):
         return torch.exp(x.mm(self.beta))
 
-    def score_2(self, score1):
-        return self.sigmoid(self.fc_layer2(score1))
+    # def score_2(self, score1):
+    #     return self.sigmoid(self.fc_layer2(score1))
 
     def forward(self, x):
         new_x = self.fc_layer(x)
         score1 = self.score_1(new_x)
-        score2 = self.score_2(score1)
-        return score1, score2
+        # score2 = self.score_2(score1)
+        # return score1, score2
+        return score1, None
 
