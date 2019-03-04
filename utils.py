@@ -54,3 +54,14 @@ def prepare_seq(data, ids, feature_names, label_name):
 
     return feature, label
 
+
+def param_change(param, model):
+    """calculate model's parameter change since last time
+
+    :param param: a deepcopy of original model parameter
+    :return:
+    """
+    cc = 0
+    for key, value in param.items():
+        cc = torch.norm(torch.add(value, torch.neg(model.state_dict()[key]))) + cc
+    return cc

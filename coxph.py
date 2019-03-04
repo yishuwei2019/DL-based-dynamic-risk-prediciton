@@ -7,24 +7,18 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 from common import *
 from models import SurvDl
-from preprocess import survival_preprocess
+from preprocess import data_short_formatting
 from loss_original import (
     c_index,
     log_parlik,
     rank_loss,
 )
 from loss import coxph_logparlk
-from utils import train_test_split
-
-TRUNCATE_TIME = 10
-TARGET_END = 30
-data = pd.read_pickle(os.path.join(os.path.dirname(__file__), 'data', 'data.pkl'))
-data.event_time = data.ttocvd.round() - 1
-data.event = data.cvd
-data = survival_preprocess(data, ['event', 'event_time'] + BASE_COVS + INDICATORS, MARKERS,
-                           TRUNCATE_TIME)
-data = data[(data.event_time >= 0) & (data.event_time < TARGET_END)]
-FEATURE_LIST = data.columns[3:]
+from utils import train_test_split, param_change
+"""use cox proportional hazard model to predict hazard and thus c-index 
+1. maximizing partial likelihood 
+2. constant hazard
+"""
 
 
 # noinspection PyShadowingNames
@@ -77,7 +71,17 @@ def test(batch_size=200):
 
 
 if __name__ == '__main__':
-    d_in, h, d_out = 21, 64, 16
+    TRUNCATE_TIME = 10
+    TARGET_END = 30
+    data = pd.read_pickle(os.path.join(os.path.dirname(__file__), 'data', 'data.pkl'))
+    data.event_time = data.ttocvd.round() - 1
+    data.event = data.cvd
+    data = data_short_formatting(data, ['event', 'event_time'] + BASE_COVS + INDICATORS, MARKERS,
+                                 TRUNCATE_TIME)
+    data = data[(data.event_time >= 0) & (data.event_time < TARGET_END)]
+    FEATURE_LIST = data.columns[3:]
+
+    d_in, h, d_out = 35, 64, 16
     batch_size = 50
     num_time_units = 24  # 24 months
     time_bin = 30
@@ -85,23 +89,16 @@ if __name__ == '__main__':
     learning_rate = .1
     model = SurvDl(d_in, h, d_out, num_time_units)
     param = deepcopy(model.state_dict())
-
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 5, gamma=.1)
     train_set, test_set = train_test_split(data, .25)
-    train_set = train_set
 
-    x_train = torch.from_numpy(train_set.loc[:, FEATURE_LIST].values.astype('float')).type(
-        torch.FloatTensor)
-    lifetime_train = torch.from_numpy(train_set.event_time.values.astype('int32')).type(
-        torch.IntTensor)
-    censor_train = torch.from_numpy(train_set.event.values.astype('int32')).type(torch.IntTensor)
-
-    x_test = torch.from_numpy(test_set.loc[:, FEATURE_LIST].values.astype('float')).type(
-        torch.FloatTensor)
-    lifetime_test = torch.from_numpy(test_set.event_time.values.astype('int32')).type(
-        torch.IntTensor)
-    censor_test = torch.from_numpy(test_set.event.values.astype('int32')).type(torch.IntTensor)
+    x_train = torch.from_numpy(train_set.loc[:, FEATURE_LIST].values).type(torch.FloatTensor)
+    lifetime_train = torch.from_numpy(train_set.event_time.values).type(torch.IntTensor)
+    censor_train = torch.from_numpy(train_set.event.values).type(torch.IntTensor)
+    x_test = torch.from_numpy(test_set.loc[:, FEATURE_LIST].values).type(torch.FloatTensor)
+    lifetime_test = torch.from_numpy(test_set.event_time.values).type(torch.IntTensor)
+    censor_test = torch.from_numpy(test_set.event.values).type(torch.IntTensor)
 
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
@@ -120,11 +117,8 @@ if __name__ == '__main__':
 
         print("train loss:", sum(train_loss) / len(train_loss))
         print("test loss:", sum(test_loss) / len(test_loss))
-        cc = 0
-        for key, value in param.items():
-            cc = torch.norm(torch.add(value, torch.neg(model.state_dict()[key]))) + cc
+        print("parameter change:", param_change(param, model))
         param = deepcopy(model.state_dict())
-        print("parameter change:", cc)
 
         # f, axes = plt.subplots(2, 1)
         # axes[0].plot(train_loss, 'b')
