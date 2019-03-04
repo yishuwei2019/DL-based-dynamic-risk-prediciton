@@ -22,6 +22,7 @@ class LongRNN(nn.Module):
 
 
 class SurvDl(nn.Module):
+    """used in coxph.py"""
     def __init__(self, d_in, h, d_out, num_time_units):
         super(SurvDl, self).__init__()
         # self.sigmoid = nn.Sigmoid()

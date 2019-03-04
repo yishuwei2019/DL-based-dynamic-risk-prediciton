@@ -74,31 +74,36 @@ if __name__ == '__main__':
     TRUNCATE_TIME = 10
     TARGET_END = 30
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), 'data', 'data.pkl'))
-    data.event_time = data.ttocvd.round() - 1
-    data.event = data.cvd
-    data = data_short_formatting(data, ['event', 'event_time'] + BASE_COVS + INDICATORS, MARKERS,
-                                 TRUNCATE_TIME)
-    data = data[(data.event_time >= 0) & (data.event_time < TARGET_END)]
+    data.ttocvd = data.ttocvd.round() - 1
+    data = data_short_formatting(
+        data,
+        ['cvd', 'ttocvd'] + BASE_COVS + INDICATORS,
+        MARKERS,
+        TRUNCATE_TIME
+    )
+    data = data[(data.ttocvd >= 0) & (data.ttocvd < TARGET_END)]
     FEATURE_LIST = data.columns[3:]
 
     d_in, h, d_out = 35, 64, 16
-    batch_size = 50
-    num_time_units = 24  # 24 months
-    time_bin = 30
-    n_epochs = 20
-    learning_rate = .1
+    time_bin, num_time_units = 30, 24  # 24 months
     model = SurvDl(d_in, h, d_out, num_time_units)
     param = deepcopy(model.state_dict())
+    
+    batch_size = 50
+    n_epochs = 20
+    learning_rate = .1
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 5, gamma=.1)
     train_set, test_set = train_test_split(data, .25)
 
-    x_train = torch.from_numpy(train_set.loc[:, FEATURE_LIST].values).type(torch.FloatTensor)
-    lifetime_train = torch.from_numpy(train_set.event_time.values).type(torch.IntTensor)
-    censor_train = torch.from_numpy(train_set.event.values).type(torch.IntTensor)
-    x_test = torch.from_numpy(test_set.loc[:, FEATURE_LIST].values).type(torch.FloatTensor)
-    lifetime_test = torch.from_numpy(test_set.event_time.values).type(torch.IntTensor)
-    censor_test = torch.from_numpy(test_set.event.values).type(torch.IntTensor)
+    x_train, lifetime_train, censor_train = \
+        torch.from_numpy(train_set.loc[:, FEATURE_LIST].values).type(torch.FloatTensor), \
+        torch.from_numpy(train_set['ttocvd'].values).type(torch.IntTensor),\
+        torch.from_numpy(train_set['cvd'].values).type(torch.IntTensor)
+    x_test, lifetime_test, censor_test = \
+        torch.from_numpy(test_set.loc[:, FEATURE_LIST].values).type(torch.FloatTensor), \
+        torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),\
+        torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor)
 
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
