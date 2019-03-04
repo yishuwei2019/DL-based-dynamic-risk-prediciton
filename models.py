@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_packed_sequence
 from torch.nn.parameter import Parameter
 
@@ -45,3 +46,22 @@ class SurvDl(nn.Module):
         # return score1, score2
         return score1, None
 
+
+class CNet(nn.Module):
+    """classification network"""
+
+    def __init__(self, d_in, h_1, h_2, d_out):
+        super(CNet, self).__init__()
+        self.fc_layer = nn.Sequential(
+            nn.Linear(d_in, h_1),
+            nn.ReLU(),
+            nn.Dropout(.5),
+            nn.Linear(h_1, h_2),
+            nn.ReLU(),
+            nn.Dropout(.5),
+            nn.Linear(h_2, d_out)
+        )
+
+    def forward(self, x):
+        x = self.fc_layer(x)
+        return F.log_softmax(x, dim=1)

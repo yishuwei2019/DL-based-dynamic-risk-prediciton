@@ -63,7 +63,7 @@ def test(batch_size=200):
         loss = coxph_logparlk(lifetime.numpy(), censor.numpy(), score1)
         # loss2 = sum(
         #     [rank_loss(lifetime, censor, score2, t + 1, time_bin) for t in range(num_time_units)])
-        test_loss += [loss.data.data]
+        test_loss += [loss.data]
         count += 1
         # if count % 10 == 0:
         #     print("test_loss:", sum(test_loss[-9:-1]))
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     time_bin, num_time_units = 30, 24  # 24 months
     model = SurvDl(d_in, h, d_out, num_time_units)
     param = deepcopy(model.state_dict())
-    
+
     batch_size = 50
     n_epochs = 20
     learning_rate = .1

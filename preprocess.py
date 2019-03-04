@@ -17,7 +17,7 @@ def data_short_formatting(data, baseline_list, marker_list, truncate_time):
     1. enhance marker_list features
     2. make data into short format
     3. change data type into float
-    :param data: long format, must have a column 'id'
+    :param data: long format, must have a column 'id', 'time'
     :param baseline_list: use tail(1), include labels
     :param marker_list: continuous covariates, use summary statistics
     :param truncate_time: only observations before truncate_time will be used
