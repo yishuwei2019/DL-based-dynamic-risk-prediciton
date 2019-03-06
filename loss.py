@@ -1,8 +1,6 @@
 import math
 import torch
 import numpy as np
-from common import TOL
-
 """Please compare this with loss_original in docstring
 """
 
@@ -11,9 +9,9 @@ def coxph_logparlk(event_time, event, hazard_ratio):
     """calculate partial likelihood in Cox model
         time invariant hazard, discrete time units
 
-    :param event_time: numpy[batch_size]
-    :param event: numpy[batch_size]
-    :param hazard_ratio: tensor(1 * batch_size)
+    :param event_time: tensor(batch_size)
+    :param event: tensor(batch_size)
+    :param hazard_ratio: tensor(batch_size)
     """
     total = 0.0
     for j in np.unique(event_time).astype(int):
@@ -46,10 +44,10 @@ def acc_pairs2(event_time, event):
         i: non-censored event
         j: alive at event_time[i]
 
-    :param event_time: numpy[batch_size]
-    :param event: numpy[batch_size]
+    :param event_time: tensor[batch_size]
+    :param event: tensor[batch_size]
     """
-    event_index = np.nonzero(event)[0]
+    event_index = event.nonzero().data.numpy().flatten()
     acc_pair = []
     for i in event_index:
         """original paper didn't consider censor case
@@ -65,36 +63,40 @@ def acc_pairs2(event_time, event):
     return acc_pair
 
 
-def sigmoid_concordance_loss(event_time, event, preds):
-    """calculate sigmoid concordance loss function
-
-    :param event_time: numpy[batch_size]
-    :param event: numpy[batch_size]
-    :param preds: tensor(batch_size * len_time_units)
+# def sigmoid_concordance_loss(event_time, event, preds):
+#     """calculate sigmoid concordance loss function
+#
+#     :param event_time: tensor[batch_size]
+#     :param event: tensor[batch_size]
+#     :param preds: tensor(batch_size * len_time_units)
+#     """
     """
-    acc_pair = acc_pairs2(event_time, event)
-    preds = preds.data.numpy()
-    m = len(event)  # batch_size
+        This function needs to be checked for correctness
+    """
 
-    # noinspection PyShadowingNames
-    def sigmoid_loss(x, preds=preds):
-        """
-        :param x: tuple(i, j)
-        :param preds: tensor(batch_size * len_time_units)
-        """
-        i, j = x[0], x[1]
-        fi, fj = preds[i][event_time[i]], preds[j][event_time[j]]
-        return 1 - np.log(1 + math.exp(fi - fj)) / np.log(2)
-
-    total = sum(list(map(sigmoid_loss, acc_pair))) * 1.0 / (m ** 2 - m)
-    return torch.tensor(-total, requires_grad=True)
+#     acc_pair = acc_pairs2(event_time, event)
+#     preds = preds.data.numpy()
+#     m = len(event)  # batch_size
+#
+#     # noinspection PyShadowingNames
+#     def sigmoid_loss(x, preds=preds):
+#         """
+#         :param x: tuple(i, j)
+#         :param preds: tensor(batch_size * len_time_units)
+#         """
+#         i, j = x[0], x[1]
+#         fi, fj = preds[i][event_time[i]], preds[j][event_time[j]]
+#         return 1 - torch.log(1 + torch.exp(fi - fj)) / torch.log(2)
+#
+#     total = sum(list(map(sigmoid_loss, acc_pair))) * 1.0 / (m ** 2 - m)
+#     return torch.tensor(-total, requires_grad=True)
 
 
 def c_index2(event_time, event, hazard_ratio):
     """calculate c-index
-    :param event_time: numpy[batch_size]
-    :param event: numpy[batch_size]
-    :param hazard_ratio: tensor(1 * batch_size)
+    :param event_time: tensor(batch_size)
+    :param event: tensor(batch_size)
+    :param hazard_ratio: tensor(batch_size)
     """
     hazard_ratio = hazard_ratio.data.numpy()
     acc_pair = acc_pairs2(event_time, event)

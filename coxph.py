@@ -10,9 +10,9 @@ from preprocess import data_short_formatting
 from loss_original import (
     c_index,
     log_parlik,
-    rank_loss,
+    rank_loss, acc_pairs
 )
-from loss import coxph_logparlk
+from loss import coxph_logparlk, acc_pairs2, c_index2, sigmoid_concordance_loss
 from utils import train_test_split, param_change, plot_loss
 """use cox proportional hazard model to predict hazard and thus c-index 
 1. maximizing partial likelihood 
@@ -100,16 +100,16 @@ if __name__ == '__main__':
         torch.from_numpy(train_set['ttocvd'].values).type(torch.IntTensor),\
         torch.from_numpy(train_set['cvd'].values).type(torch.IntTensor)
     x_test, lifetime_test, censor_test = \
-        torch.from_numpy(test_set.loc[:, FEATURE_LIST].values).type(torch.FloatTensor), \
-        torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),\
-        torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor)
+        torch.from_numpy(test_set.head(500).loc[:, FEATURE_LIST].values).type(torch.FloatTensor), \
+        torch.from_numpy(test_set.head(500)['ttocvd'].values).type(torch.IntTensor),\
+        torch.from_numpy(test_set.head(500)['cvd'].values).type(torch.IntTensor)
 
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
         score1_total, _ = model(x_test)
         loss_total = log_parlik(lifetime_test, censor_test, score1_total)
-        print(loss_total)
-        test = coxph_logparlk(lifetime_test, censor_test, score1_total)
+
+        test = c_index2(lifetime_test, censor_test, score1_total)
         print(test)
         exit()
         # print("total loss in test sample:", loss_total)
