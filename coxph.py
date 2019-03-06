@@ -7,12 +7,8 @@ from copy import deepcopy
 from common import *
 from models import SurvDl
 from preprocess import data_short_formatting
-from loss_original import (
-    c_index,
-    log_parlik,
-    rank_loss, acc_pairs
-)
-from loss import coxph_logparlk, acc_pairs2, c_index2, sigmoid_concordance_loss
+from loss_original import log_parlik
+from loss import coxph_logparlk, c_index, auc_pairs, auc_jm
 from utils import train_test_split, param_change, plot_loss
 """use cox proportional hazard model to predict hazard and thus c-index 
 1. maximizing partial likelihood 
@@ -109,8 +105,7 @@ if __name__ == '__main__':
         score1_total, _ = model(x_test)
         loss_total = log_parlik(lifetime_test, censor_test, score1_total)
 
-        test = c_index2(lifetime_test, censor_test, score1_total)
-        print(test)
+        print(auc_jm(censor_test, lifetime_test, score1_total, 10))
         exit()
         # print("total loss in test sample:", loss_total)
         cindex = c_index(censor_test, lifetime_test, score1_total)

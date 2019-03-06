@@ -1,4 +1,3 @@
-import math
 import torch
 import numpy as np
 """Please compare this with loss_original in docstring
@@ -39,11 +38,10 @@ def coxph_logparlk(event_time, event, hazard_ratio):
     return torch.neg(total)
 
 
-def acc_pairs2(event_time, event):
+def acc_pairs(event, event_time):
     """calculate accepted pair (i, j)
         i: non-censored event
         j: alive at event_time[i]
-
     :param event_time: tensor[batch_size]
     :param event: tensor[batch_size]
     """
@@ -74,7 +72,7 @@ def acc_pairs2(event_time, event):
         This function needs to be checked for correctness
     """
 
-#     acc_pair = acc_pairs2(event_time, event)
+#     acc_pair = acc_pairs(event, event_time)
 #     preds = preds.data.numpy()
 #     m = len(event)  # batch_size
 #
@@ -92,12 +90,40 @@ def acc_pairs2(event_time, event):
 #     return torch.tensor(-total, requires_grad=True)
 
 
-def c_index2(event_time, event, hazard_ratio):
+def c_index(event, event_time, hazard_ratio):
     """calculate c-index
     :param event_time: tensor(batch_size)
     :param event: tensor(batch_size)
     :param hazard_ratio: tensor(batch_size)
     """
     hazard_ratio = hazard_ratio.data.numpy()
-    acc_pair = acc_pairs2(event_time, event)
+    acc_pair = acc_pairs(event, event_time)
     return sum([hazard_ratio[x[0]] >= hazard_ratio[x[1]] for x in acc_pair]) * 1.0 / len(acc_pair)
+
+
+def auc_pairs(event, event_time, horizon):
+    """calculate accepted pair (i, j) similar to AUC JM
+        i: non-censor event
+        j: alive at event_time[j]
+    :param event: tensor[batch_size]
+    :param event_time: tensor[batch_size]
+    :param horizon: delta time
+    """
+    i_index = event.nonzero().data.numpy().flatten()
+    i_index = i_index[np.where(event_time[i_index] <= horizon)].tolist()
+    j_index = np.where(event_time > horizon)[0].tolist()
+
+    auc_pair = [(i, j) for i in i_index for j in j_index]
+    auc_pair.sort(key=lambda x: x[0])
+    return auc_pair
+
+
+def auc_jm(event, event_time, hazard_ratio, horizon):
+    """AUC type c-index in JM package
+    :param event_time: tensor(batch_size)
+    :param event: tensor(batch_size)
+    :param hazard_ratio: tensor(batch_size)
+    """
+    hazard_ratio = hazard_ratio.data.numpy()
+    auc_pair = auc_pairs(event, event_time, horizon)
+    return sum([hazard_ratio[x[0]] > hazard_ratio[x[1]] for x in auc_pair]) * 1.0 / len(auc_pair)
