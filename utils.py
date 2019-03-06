@@ -1,5 +1,6 @@
-import numpy as np
 import torch
+import matplotlib.pyplot as plt
+import numpy as np
 from torch.nn.utils.rnn import pack_sequence, pad_packed_sequence
 
 
@@ -65,3 +66,15 @@ def param_change(param, model):
     for key, value in param.items():
         cc = torch.norm(torch.add(value, torch.neg(model.state_dict()[key]))) + cc
     return cc
+
+
+def plot_loss(train_loss, test_loss):
+    f, axes = plt.subplots(2, 1)
+    axes[0].plot(train_loss, 'b')
+    axes[0].set_xlabel("iteration")
+    axes[0].set_ylabel("train loss")
+    axes[1].plot(test_loss, 'r')
+    axes[1].set_xlabel("iteration")
+    axes[1].set_ylabel("test loss")
+    plt.show()
+

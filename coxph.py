@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.optim as optim
-import matplotlib.pyplot as plt
 from copy import deepcopy
 from common import *
 from models import SurvDl
@@ -14,7 +13,7 @@ from loss_original import (
     rank_loss,
 )
 from loss import coxph_logparlk
-from utils import train_test_split, param_change
+from utils import train_test_split, param_change, plot_loss
 """use cox proportional hazard model to predict hazard and thus c-index 
 1. maximizing partial likelihood 
 2. constant hazard
@@ -124,15 +123,7 @@ if __name__ == '__main__':
         print("test loss:", sum(test_loss) / len(test_loss))
         print("parameter change:", param_change(param, model))
         param = deepcopy(model.state_dict())
-
-        # f, axes = plt.subplots(2, 1)
-        # axes[0].plot(train_loss, 'b')
-        # axes[0].set_xlabel("iteration")
-        # axes[0].set_ylabel("train loss")
-        # axes[1].plot(test_loss, 'r')
-        # axes[1].set_xlabel("iteration")
-        # axes[1].set_ylabel("test loss")
-        # plt.show()
+        # plot_loss(train_loss, test_loss)
 
 
 

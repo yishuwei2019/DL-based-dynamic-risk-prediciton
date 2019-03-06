@@ -4,12 +4,11 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-import matplotlib.pyplot as plt
 from copy import deepcopy
 from common import *
 from models import CNet
 from preprocess import data_short_formatting
-from utils import train_test_split, param_change
+from utils import train_test_split, param_change, plot_loss
 """Treat dynamic risk prediction as a classification problem for a specific start time and horizon
 """
 
@@ -99,12 +98,5 @@ if __name__ == "__main__":
         print("parameter change:", param_change(param, model))
         param = deepcopy(model.state_dict())
 
-        f, axes = plt.subplots(2, 1)
-        # axes[0].plot(train_loss[:-1], 'b')
-        # axes[0].set_xlabel("iteration")
-        # axes[0].set_ylabel("train loss")
-        # axes[1].plot(test_loss[:-1], 'r')
-        # axes[1].set_xlabel("iteration")
-        # axes[1].set_ylabel("test loss")
-        # plt.show()
+        # plot_loss(train_loss, test_loss)
 
