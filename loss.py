@@ -16,29 +16,25 @@ def coxph_logparlk(event_time, event, hazard_ratio):
     :param hazard_ratio: tensor(1 * batch_size)
     """
     total = 0.0
-    for j in np.unique(event_time):
-        index_j = np.where([
-            (abs(event_time[ii] - j) < TOL and event[ii] > 0) for ii in range(len(event))
-        ])  # H in original code (which subject has event at that time)
+    for j in np.unique(event_time).astype(int):
+        # H in original code (which subject has event at that time)
+        index_j = torch.min(event_time == j, event == 1).nonzero().data.numpy().flatten()
         """original paper didn't consider censored sample
-        sum_plus = hazard_ratio[np.where(
-            [(event_time[ii] - j) > -TOL for ii in range(len(event))])].sum()
+        sum_plus = hazard_ratio[event_time >= j].sum()
         """
-        sum_plus = hazard_ratio[np.where(
-            [(event_time[ii] - j) > -TOL for ii in range(len(event))])].sum()
+        sum_plus = hazard_ratio[event_time >= j].sum()
 
         """original paper's version 
-        sum_plus = hazard_ratio[np.where(
-            [(event_time[ii] - j) > -TOL and event[ii] == 1 for ii in range(len(event))])].sum()
+        sum_plus = hazard_ratio[torch.min(event_time >= j, event == 1)].sum()
         """
-        subtotal_1 = torch.log(hazard_ratio[index_j]).sum()
+        subtotal_1 = torch.log(hazard_ratio)[index_j].sum() if len(index_j) > 0 else 0
 
-        # subtotal_2 = np.sum(index_j) * np.log(sum_plus)  # if no Efron correction considered
+        # subtotal_2 = len(index_j) * torch.log(sum_plus)  # if no Efron correction considered
         # the Efron correction
-        subtotal_2 = 0
-        sum_j = hazard_ratio[index_j].sum()
-        for l in range(len(index_j[0])):
-            subtotal_2 = torch.add(torch.log(sum_plus - l * 1.0 / len(index_j[0]) * sum_j),
+        subtotal_2 = 0.0
+        sum_j = hazard_ratio[index_j].sum() if len(index_j) > 0 else 0
+        for l in range(len(index_j)):
+            subtotal_2 = torch.add(torch.log(sum_plus - l * 1.0 / len(index_j) * sum_j),
                                    subtotal_2)
 
         total = subtotal_1 - subtotal_2 + total

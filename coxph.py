@@ -107,7 +107,11 @@ if __name__ == '__main__':
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
         score1_total, _ = model(x_test)
-        # loss_total = log_parlik(lifetime_test, censor_test, score1_total)
+        loss_total = log_parlik(lifetime_test, censor_test, score1_total)
+        print(loss_total)
+        test = coxph_logparlk(lifetime_test, censor_test, score1_total)
+        print(test)
+        exit()
         # print("total loss in test sample:", loss_total)
         cindex = c_index(censor_test, lifetime_test, score1_total)
         print("cindex in test sample:", cindex)
