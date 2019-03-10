@@ -4,5 +4,5 @@ data/*
 __pycache__/
 
 debug/*
-
+example.py
 *.pth
