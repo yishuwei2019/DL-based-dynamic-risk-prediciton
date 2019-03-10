@@ -8,7 +8,7 @@ from common import *
 from models import SurvDl
 from preprocess import data_short_formatting
 from loss_original import log_parlik
-from loss import coxph_logparlk, c_index, auc_pairs, auc_jm
+from loss import coxph_logparlk, c_index, auc_jm
 from utils import train_test_split, param_change, plot_loss
 """use cox proportional hazard model to predict hazard and thus c-index 
 1. maximizing partial likelihood 
@@ -29,8 +29,8 @@ def train(batch_size=100):
         censor = censor_train[idx[count * batch_size: (count + 1) * batch_size]]
         optimizer.zero_grad()
         score1, score2 = model(x)
-        # loss = log_parlik(lifetime, censor, score1)
-        loss = coxph_logparlk(lifetime.numpy(), censor.numpy(), score1)
+        loss = log_parlik(lifetime, censor, score1)
+        # loss = coxph_logparlk(lifetime, censor, score1)
         # loss2 = sum(
         #     [rank_loss(lifetime, censor, score2, t + 1, time_bin) for t in range(num_time_units)])
         loss.backward()
@@ -54,8 +54,8 @@ def test(batch_size=200):
         lifetime = lifetime_test[idx[count * batch_size: (count + 1) * batch_size]]
         censor = censor_test[idx[count * batch_size: (count + 1) * batch_size]]
         score1, score2 = model(x)
-        # loss = log_parlik(lifetime, censor, score1)
-        loss = coxph_logparlk(lifetime.numpy(), censor.numpy(), score1)
+        loss = log_parlik(lifetime, censor, score1)
+        # loss = coxph_logparlk(lifetime, censor, score1)
         # loss2 = sum(
         #     [rank_loss(lifetime, censor, score2, t + 1, time_bin) for t in range(num_time_units)])
         test_loss += [loss.data]
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     batch_size = 50
     n_epochs = 20
-    learning_rate = .1
+    learning_rate = .001
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 5, gamma=.1)
     train_set, test_set = train_test_split(data, .25)
@@ -96,17 +96,16 @@ if __name__ == '__main__':
         torch.from_numpy(train_set['ttocvd'].values).type(torch.IntTensor),\
         torch.from_numpy(train_set['cvd'].values).type(torch.IntTensor)
     x_test, lifetime_test, censor_test = \
-        torch.from_numpy(test_set.head(500).loc[:, FEATURE_LIST].values).type(torch.FloatTensor), \
-        torch.from_numpy(test_set.head(500)['ttocvd'].values).type(torch.IntTensor),\
-        torch.from_numpy(test_set.head(500)['cvd'].values).type(torch.IntTensor)
+        torch.from_numpy(test_set.loc[:, FEATURE_LIST].values).type(torch.FloatTensor), \
+        torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),\
+        torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor)
 
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
         score1_total, _ = model(x_test)
         loss_total = log_parlik(lifetime_test, censor_test, score1_total)
 
-        print(auc_jm(censor_test, lifetime_test, score1_total, 10))
-        exit()
+        print("ten year auc", auc_jm(censor_test, lifetime_test, score1_total, 10))
         # print("total loss in test sample:", loss_total)
         cindex = c_index(censor_test, lifetime_test, score1_total)
         print("cindex in test sample:", cindex)

@@ -12,7 +12,7 @@ def coxph_logparlk(event_time, event, hazard_ratio):
     :param event: tensor(batch_size)
     :param hazard_ratio: tensor(batch_size)
     """
-    total = 0.0
+    total = torch.tensor(0.0)
     for j in np.unique(event_time).astype(int):
         # H in original code (which subject has event at that time)
         index_j = torch.min(event_time == j, event == 1).nonzero().data.numpy().flatten()
@@ -24,12 +24,13 @@ def coxph_logparlk(event_time, event, hazard_ratio):
         """original paper's version 
         sum_plus = hazard_ratio[torch.min(event_time >= j, event == 1)].sum()
         """
-        subtotal_1 = torch.log(hazard_ratio)[index_j].sum() if len(index_j) > 0 else 0
+        subtotal_1 = torch.log(hazard_ratio)[index_j].sum() if len(index_j) > 0 else torch.tensor(
+            0.0)
 
         # subtotal_2 = len(index_j) * torch.log(sum_plus)  # if no Efron correction considered
         # the Efron correction
-        subtotal_2 = 0.0
-        sum_j = hazard_ratio[index_j].sum() if len(index_j) > 0 else 0
+        subtotal_2 = torch.tensor(0.0)
+        sum_j = hazard_ratio[index_j].sum() if len(index_j) > 0 else torch.tensor(0.0)
         for l in range(len(index_j)):
             subtotal_2 = torch.add(torch.log(sum_plus - l * 1.0 / len(index_j) * sum_j),
                                    subtotal_2)
@@ -98,7 +99,7 @@ def c_index(event, event_time, hazard_ratio):
     """
     hazard_ratio = hazard_ratio.data.numpy()
     acc_pair = acc_pairs(event, event_time)
-    return sum([hazard_ratio[x[0]] >= hazard_ratio[x[1]] for x in acc_pair]) * 1.0 / len(acc_pair)
+    return sum([hazard_ratio[x[0]] > hazard_ratio[x[1]] for x in acc_pair]) * 1.0 / len(acc_pair)
 
 
 def auc_pairs(event, event_time, horizon):
@@ -126,4 +127,5 @@ def auc_jm(event, event_time, hazard_ratio, horizon):
     """
     hazard_ratio = hazard_ratio.data.numpy()
     auc_pair = auc_pairs(event, event_time, horizon)
+
     return sum([hazard_ratio[x[0]] > hazard_ratio[x[1]] for x in auc_pair]) * 1.0 / len(auc_pair)

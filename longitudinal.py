@@ -10,6 +10,7 @@ from utils import (
     train_test_split,
     id_loaders,
     prepare_seq,
+    plot_loss,
 )
 
 TARGET_START = 20
@@ -52,9 +53,7 @@ def train(model, train_set, batch_size=20):
 
         train_loss += [loss.tolist()]
         count += 1
-        if count % 10 == 0:
-            print("10 batches trained:", sum(train_loss[-9:-1]))
-            # print(model.state_dict())
+
     return train_loss
 
 
@@ -105,8 +104,7 @@ if __name__ == '__main__':
             print(param_group['lr'])
             train_loss = train(model, train_set, batch_size=batch_size)
             test_loss = test(model, test_set, batch_size=batch_size)
-            print("test loss:")
-            print(test_loss)
+            plot_loss(train_loss, test_loss)
 
         torch.save({
             'epoch': epoch,

@@ -37,7 +37,7 @@ def acc_pairs(censor, lifetime):
 def c_index(censor, lifetime, score1):
     score1 = score1.data.cpu().numpy()
     acc_pair = acc_pairs(censor, lifetime)
-    prob = sum([score1[i] >= score1[j] for (i, j) in acc_pair])[0]*1.0/len(acc_pair)
+    prob = sum([score1[i] > score1[j] for (i, j) in acc_pair])[0]*1.0/len(acc_pair)
     return prob
 
 

@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from copy import deepcopy
 from common import *
+from loss import auc_jm
 from models import CNet
 from preprocess import data_short_formatting
 from utils import train_test_split, param_change, plot_loss
@@ -63,9 +64,9 @@ if __name__ == "__main__":
     data.label = data.label.astype('int32')
     data.loc[(data.ttocvd <= TARGET_END) & (data.cvd == 0), 'label'] = 2
     data = data_short_formatting(
-        data, ['label'] + BASE_COVS + INDICATORS, MARKERS, TRUNCATE_TIME
+        data, ['label', 'cvd', 'ttocvd'] + BASE_COVS + INDICATORS, MARKERS, TRUNCATE_TIME
     )
-    FEATURE_LIST = data.columns[2:]
+    FEATURE_LIST = data.columns[4:]
 
     d_in, h, d_out = 35, 64, 16
     model = CNet(35, 128, 64, 3)
@@ -73,7 +74,7 @@ if __name__ == "__main__":
 
     batch_size = 200
     n_epochs = 30
-    learning_rate = .001
+    learning_rate = .01
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 5, gamma=.1)
     train_set, test_set = train_test_split(data, .25)
@@ -87,16 +88,22 @@ if __name__ == "__main__":
 
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
+        auc_test = auc_jm(
+            torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor),
+            torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),
+            model(x_test)[:, 1],
+            TARGET_END - TRUNCATE_TIME
+        )
+        print("ten year auc:", auc_test)
+
         scheduler.step()
         for param_group in optimizer.param_groups:
             print("learning rate:", param_group['lr'])
         train_loss = train(batch_size=batch_size)
         test_loss = test(batch_size=batch_size)
+        plot_loss(train_loss, test_loss)
 
-        print("train loss:", sum(train_loss) / len(train_loss))
-        print("test loss:", sum(test_loss) / len(test_loss))
         print("parameter change:", param_change(param, model))
         param = deepcopy(model.state_dict())
 
-        # plot_loss(train_loss, test_loss)
 
