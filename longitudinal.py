@@ -5,7 +5,7 @@ import torch
 import torch.optim as optim
 from torch.nn.functional import mse_loss
 from common import *
-from models import LongRNN
+from models import DeepHit
 from utils import (
     train_test_split,
     id_loaders,
@@ -40,7 +40,9 @@ def train(model, train_set, batch_size=20):
             feature_names=FEATURE_LIST,
             label_name='SBP_y'
         )
-        marker_output = model(feature_b)
+        marker_output, cs1_out = model(feature_b)
+        print(cs1_out.sum(dim=1))
+        exit()
         marker_b = marker_b.contiguous().view(-1)
         # delete the padding part
         marker_output = marker_output.contiguous().view(-1)[torch.nonzero(marker_b)]
@@ -70,7 +72,7 @@ def test(model, test_set, batch_size=20):
             feature_names=FEATURE_LIST,
             label_name='SBP_y'
         )
-        marker_output = model(feature_b)
+        marker_output, cs1_out = model(feature_b)
         marker_b = marker_b.contiguous().view(-1)
         # delete the padding part
         marker_output = marker_output.contiguous().view(-1)[torch.nonzero(marker_b)]
@@ -84,11 +86,18 @@ if __name__ == '__main__':
     batch_size = 50
     n_epochs = 10
     learning_rate = .01
-    model = LongRNN(
-        input_size=len(FEATURE_LIST),
-        hidden_size=3,
-        num_layers=1,
-        batch_size=batch_size,
+    model = DeepHit(
+        dict(
+            d_in=len(FEATURE_LIST),
+            d_hidden=20,
+            num_layers=2,
+            batch_size=batch_size,
+        ),
+        dict(
+            d_in=2 * 20,
+            h=128,
+            d_out=5,
+        )
     )
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)

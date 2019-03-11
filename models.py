@@ -6,20 +6,65 @@ from torch.nn.parameter import Parameter
 
 
 class LongRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, batch_size):
+    def __init__(self, d_in, d_hidden, num_layers, batch_size):
         super(LongRNN, self).__init__()
-        self.lstm_layer = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.out_layer = nn.Linear(hidden_size, 1)
+        self.lstm_layer = nn.LSTM(d_in, d_hidden, num_layers, batch_first=True)
+        self.out_layer = nn.Sequential(
+            nn.Linear(d_hidden, 1),
+            nn.ReLU(),
+        )
         # initial values
-        self.h0 = torch.zeros(num_layers, batch_size, hidden_size)
-        self.c0 = torch.zeros(num_layers, batch_size, hidden_size)
+        self.h0 = torch.zeros(num_layers, batch_size, d_hidden)
+        self.c0 = torch.zeros(num_layers, batch_size, d_hidden)
 
     def forward(self, x):
-        out, _ = self.lstm_layer(x, (self.h0, self.c0))
-        # out: tensor (batch_size, seq_length, hidden_state)
+        out, (h_n, _) = self.lstm_layer(x, (self.h0, self.c0))
+        h_n = h_n.permute(1, 0, 2)  # batch, num_layer * num_directions, d_hidden
+        # batch, feature size (num_layer * num_directions * d_hidden)
+        h_n = h_n.contiguous().view(50, -1)
+
+        # out: tensor (batch_size, seq_length, hidden_state * num_directions)
         out, _ = pad_packed_sequence(out, batch_first=True, padding_value=0)
-        out = self.out_layer(out)
-        return out[:, :, 0]
+        out = self.out_layer(out)  # batch_size * seq_length * 1
+        return out[:, :, 0], h_n
+
+
+class CsNet(nn.Module):
+    """cause specific network in deep hit"""
+    def __init__(self, d_in, h, d_out):
+        super(CsNet, self).__init__()
+        self.fc_layer = nn.Sequential(
+            nn.Linear(d_in, h),
+            nn.ReLU(),
+            nn.Dropout(.5),
+            nn.Linear(h, d_out),
+        )
+
+    def forward(self, x):
+        x = self.fc_layer(x)
+        return F.softmax(x, dim=1)
+
+
+class DeepHit(nn.Module):
+    """combination of RNN longitudinal and CsNet for competing events"""
+    def __init__(self, rnn_input, csnet_input):
+        super(DeepHit, self).__init__()
+        self.rnn = LongRNN(
+            rnn_input['d_in'],
+            rnn_input['d_hidden'],
+            rnn_input['num_layers'],
+            rnn_input['batch_size'],
+        )
+        self.csnet1 = CsNet(
+            rnn_input['num_layers'] * rnn_input['d_hidden'],  # * 1 (num directions),
+            csnet_input['h'],
+            csnet_input['d_out'],
+        )
+
+    def forward(self, x):
+        marker_out, feature_out = self.rnn(x)
+        cs1_out = self.csnet1(feature_out)
+        return marker_out, cs1_out
 
 
 class SurvDl(nn.Module):
@@ -27,8 +72,12 @@ class SurvDl(nn.Module):
     def __init__(self, d_in, h, d_out, num_time_units):
         super(SurvDl, self).__init__()
         # self.sigmoid = nn.Sigmoid()
-        self.fc_layer = nn.Sequential(nn.Linear(d_in, h), nn.ReLU(), nn.Dropout(0.5),
-                                      nn.Linear(h, d_out))
+        self.fc_layer = nn.Sequential(
+            nn.Linear(d_in, h),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(h, d_out),
+        )
         # self.fc_layer2 = nn.Linear(1, num_time_units)
         self.beta = Parameter(torch.Tensor(d_out, 1))
         self.beta.data.uniform_(-0.001, 0.001)
