@@ -5,6 +5,12 @@ from torch.nn.utils.rnn import pad_packed_sequence
 from torch.nn.parameter import Parameter
 
 
+def init_weights(m):
+    if type(m) == nn.Linear:
+        torch.nn.init.xavier_uniform_(m.weight)
+        # m.bias.data.fill_(0.01)
+
+
 class LongRNN(nn.Module):
     def __init__(self, d_in, d_hidden, num_layers, batch_size):
         super(LongRNN, self).__init__()
@@ -78,6 +84,7 @@ class SurvDl(nn.Module):
             nn.Dropout(0.5),
             nn.Linear(h, d_out),
         )
+        # self.fc_layer.apply(init_weights)
         # self.fc_layer2 = nn.Linear(1, num_time_units)
         self.beta = Parameter(torch.Tensor(d_out, 1))
         self.beta.data.uniform_(-0.001, 0.001)
@@ -104,12 +111,13 @@ class CNet(nn.Module):
         self.fc_layer = nn.Sequential(
             nn.Linear(d_in, h_1),
             nn.ReLU(),
-            nn.Dropout(.5),
+            # nn.Dropout(.5),
             nn.Linear(h_1, h_2),
             nn.ReLU(),
-            nn.Dropout(.5),
+            # nn.Dropout(.5),
             nn.Linear(h_2, d_out)
         )
+        self.fc_layer.apply(init_weights)
 
     def forward(self, x):
         x = self.fc_layer(x)

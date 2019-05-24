@@ -50,14 +50,14 @@ def acc_pairs(event, event_time):
     acc_pair = []
     for i in event_index:
         """original paper didn't consider censor case
-        acc_pair += [(i, j) for j in np.where(
-            np.logical_and(event_time >= event_time[i], event == 0))[0]]
-        acc_pair += [(i, j) for j in event_index if event_time[j] > event_time[i]]
+        acc_pair += [(i, j) for j in range(len(event)) if event_time[j] > event_time[i]]
         
         In addition: 
         missing: i and j are both event but tie (same event_time)
         """
-        acc_pair += [(i, j) for j in range(len(event)) if event_time[j] > event_time[i]]
+        acc_pair += [(i, j) for j in np.where(
+            np.logical_and(event_time >= event_time[i], event == 0))[0]]
+        acc_pair += [(i, j) for j in event_index if event_time[j] > event_time[i]]
     acc_pair.sort(key=lambda x: x[0])
     return acc_pair
 

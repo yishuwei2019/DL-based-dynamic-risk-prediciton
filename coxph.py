@@ -76,7 +76,7 @@ if __name__ == '__main__':
         MARKERS,
         TRUNCATE_TIME
     )
-    data = data[(data.ttocvd >= 0) & (data.ttocvd < TARGET_END)]
+    # data = data[(data.ttocvd >= 0) & (data.ttocvd < TARGET_END)]
     FEATURE_LIST = data.columns[3:]
 
     d_in, h, d_out = 35, 64, 16
@@ -84,12 +84,12 @@ if __name__ == '__main__':
     model = SurvDl(d_in, h, d_out, num_time_units)
     param = deepcopy(model.state_dict())
 
-    batch_size = 50
+    batch_size = 200
     n_epochs = 20
-    learning_rate = .001
+    learning_rate = .001  # should be small
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, 5, gamma=.1)
-    train_set, test_set = train_test_split(data, .25)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, 4, gamma=.1)
+    train_set, test_set = train_test_split(data, .3)
 
     x_train, lifetime_train, censor_train = \
         torch.from_numpy(train_set.loc[:, FEATURE_LIST].values).type(torch.FloatTensor), \
@@ -100,12 +100,14 @@ if __name__ == '__main__':
         torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),\
         torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor)
 
+    train_loss = []
+    test_loss = []
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
         score1_total, _ = model(x_test)
         loss_total = log_parlik(lifetime_test, censor_test, score1_total)
 
-        print("ten year auc", auc_jm(censor_test, lifetime_test, score1_total, 10))
+        # print("ten year auc", auc_jm(censor_test, lifetime_test, score1_total, 10))
         # print("total loss in test sample:", loss_total)
         cindex = c_index(censor_test, lifetime_test, score1_total)
         print("cindex in test sample:", cindex)
@@ -114,14 +116,15 @@ if __name__ == '__main__':
             scheduler.step()
         for param_group in optimizer.param_groups:
             print("learning rate:", param_group['lr'])
-        train_loss = train(batch_size=batch_size)
-        test_loss = test(batch_size=batch_size)
+        train_loss = train_loss + train(batch_size=batch_size)
+        test_loss = test_loss + test(batch_size=batch_size)
 
-        print("train loss:", sum(train_loss) / len(train_loss))
-        print("test loss:", sum(test_loss) / len(test_loss))
+        # print("train loss:", sum(train_loss) / len(train_loss))
+        # print("test loss:", sum(test_loss) / len(test_loss))
         print("parameter change:", param_change(param, model))
         param = deepcopy(model.state_dict())
-        # plot_loss(train_loss, test_loss)
+
+    plot_loss(train_loss, test_loss)
 
 
 
