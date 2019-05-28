@@ -111,14 +111,12 @@ class CNet(nn.Module):
         self.fc_layer = nn.Sequential(
             nn.Linear(d_in, h_1),
             nn.ReLU(),
-            # nn.Dropout(.5),
             nn.Linear(h_1, h_2),
             nn.ReLU(),
-            # nn.Dropout(.5),
             nn.Linear(h_2, d_out)
         )
         self.fc_layer.apply(init_weights)
 
     def forward(self, x):
         x = self.fc_layer(x)
-        return F.log_softmax(x, dim=1)
+        return torch.sigmoid(x)
