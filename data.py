@@ -17,6 +17,7 @@ data['delta'] = data.groupby('id')['age'].diff().fillna(0)  # delta time
 data['time'] = data.groupby('id')['delta'].cumsum()  # time since come to study
 for key, value in MARKER_MAX.items():
     data[key] = data[key].apply(lambda x: min(x * 1.0 / value, 1))
+    data[key] = data[key] - (data[key].mean())
 
 # next marker in the sequence as response
 for marker in MARKERS:

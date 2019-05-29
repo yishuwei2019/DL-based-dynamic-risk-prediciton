@@ -106,17 +106,15 @@ class SurvDl(nn.Module):
 class CNet(nn.Module):
     """classification network"""
 
-    def __init__(self, d_in, h_1, h_2, d_out):
+    def __init__(self, d_in, h_1, d_out):
         super(CNet, self).__init__()
         self.fc_layer = nn.Sequential(
             nn.Linear(d_in, h_1),
             nn.ReLU(),
-            nn.Linear(h_1, h_2),
-            nn.ReLU(),
-            nn.Linear(h_2, d_out)
+            nn.Linear(h_1, d_out),
+            nn.LogSoftmax(dim=1),
         )
         self.fc_layer.apply(init_weights)
 
     def forward(self, x):
-        x = self.fc_layer(x)
-        return torch.sigmoid(x)
+        return self.fc_layer(x)

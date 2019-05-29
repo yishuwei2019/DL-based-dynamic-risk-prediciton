@@ -129,3 +129,5 @@ def auc_jm(event, event_time, hazard_ratio, horizon):
     auc_pair = auc_pairs(event, event_time, horizon)
 
     return sum([hazard_ratio[x[0]] > hazard_ratio[x[1]] for x in auc_pair]) * 1.0 / len(auc_pair)
+
+

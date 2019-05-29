@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from copy import deepcopy
@@ -11,6 +12,7 @@ from models import CNet
 from preprocess import data_short_formatting
 from utils import train_test_split, param_change, plot_loss
 """Treat dynamic risk prediction as a classification problem for a specific start time and horizon
+Use neural network for classification, please compare that with logistic.py
 """
 
 
@@ -26,7 +28,7 @@ def train(batch_size=100):
         label = label_train[idx[count * batch_size: (count + 1) * batch_size]]
         optimizer.zero_grad()
         output = model(x)
-        loss = F.nll_loss(output, label)
+        loss = criterion(output, label)
         loss.backward()
         train_loss += [loss.data]
         optimizer.step()
@@ -47,7 +49,7 @@ def test(batch_size=200):
         x = x_test[idx[count * batch_size: (count + 1) * batch_size], :]
         label = label_test[idx[count * batch_size: (count + 1) * batch_size]]
         output = model(x)
-        loss = F.nll_loss(output, label)
+        loss = criterion(output, label)
         test_loss += [loss.data]
         count += 1
         # if count % 10 == 0:
@@ -56,17 +58,18 @@ def test(batch_size=200):
 
 
 if __name__ == "__main__":
-    TRUNCATE_TIME = 10
-    TARGET_END = 30
+    TRUNCATE_TIME = 10  # preparing feature
+    TARGET_TIME = 40  # target time
+
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), 'data', 'data.pkl'))
     data = data[(data.ttocvd >= 0)]
 
-    # label = 0: alive after TARGET_END, 1: dead before TARGET_END, 2: censored before TARGET_END
-    data['label'] = data.ttocvd <= TARGET_END
+    # label = 0: alive after TARGET_TIME, 1: dead before TARGET_TIME, 2: censored before TARGET_TIME
+    data['label'] = data.ttocvd <= TARGET_TIME
     data.label = data.label.astype('int32')
     # delete unclear subjects
-    # data = data.loc[(data.ttocvd > TARGET_END) | (data.cvd == 1), :]
-    data.loc[(data.ttocvd <= TARGET_END) & (data.cvd == 0), 'label'] = 2
+    data = data.loc[(data.ttocvd > TARGET_TIME) | (data.cvd == 1), :]
+    # data.loc[(data.ttocvd <= TARGET_TIME) & (data.cvd == 0), 'label'] = 2
 
     data = data_short_formatting(
         data, ['label', 'cvd', 'ttocvd'] + BASE_COVS + INDICATORS, MARKERS, TRUNCATE_TIME
@@ -74,12 +77,13 @@ if __name__ == "__main__":
     FEATURE_LIST = data.columns[4:]
 
     d_in, h, d_out = 35, 64, 16
-    model = CNet(35, 210, 70, 3)
+    model = CNet(35, 70, 2)
     param = deepcopy(model.state_dict())
 
     batch_size = 200
     n_epochs = 30
-    learning_rate = .01
+    learning_rate = .1
+    criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 5, gamma=.1)
     train_set, test_set = train_test_split(data, .3)
@@ -100,9 +104,13 @@ if __name__ == "__main__":
             torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor),
             torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),
             model(x_test)[:, 1],
-            TARGET_END
+            TARGET_TIME
         )
         print("ten year auc:", auc_test)
+
+        label_pred = torch.exp(model(x_test))[:, 1].data > .5
+        label_true = test_set['label'].values
+        print("accuracy", sum(label_pred.numpy() == label_true) * 1.0 / len(label_true))
 
         scheduler.step()
         for param_group in optimizer.param_groups:

@@ -11,6 +11,7 @@ __all__ = [
     'ET_PAIRS',
     'COHORT_CODE',
     'MARKER_MAX',
+    'SHORT_FEATURES',
 ]
 
 TOL = .0001  # tolerance for comparing between floats
@@ -100,3 +101,20 @@ MARKER_MAX = {
     'DBP': 170,
     'age': 100,
 }
+
+SHORT_FEATURES = [
+    'RACE',
+    'male',
+    'EDU_G',
+    'RXCHL',
+    'RXHYP',
+    'SMOKER',
+    'HXDIAB',
+    'BMINOW_med',
+    'TOTCHL_med',
+    'LDLCHL_med',
+    'HDLCHL_med',
+    'SBP_med',
+    'DBP_med',
+    'age_med'
+]
