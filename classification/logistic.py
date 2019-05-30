@@ -13,7 +13,7 @@ from utils import train_test_split
 
 if __name__ == "__main__":
     TRUNCATE_TIME = 10
-    TARGET_END = 40
+    TARGET_END = 15
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), 'data', 'data.pkl'))
     data = data[(data.ttocvd >= 0)]
 

@@ -118,3 +118,20 @@ class CNet(nn.Module):
 
     def forward(self, x):
         return self.fc_layer(x)
+
+
+class DSNet(nn.Module):
+    """discreate survival network"""
+
+    def __init__(self, d_in, h_1, d_out):
+        super(DSNet, self).__init__()
+        self.fc_layer = nn.Sequential(
+            nn.Linear(d_in, h_1),
+            nn.ReLU(),
+            nn.Linear(h_1, d_out),
+            nn.Sigmoid(),
+        )
+        self.fc_layer.apply(init_weights)
+
+    def forward(self, x):
+        return self.fc_layer(x)
