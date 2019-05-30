@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+
 """Please compare this with loss_original in docstring
 """
 
@@ -15,7 +16,10 @@ def coxph_logparlk(event_time, event, hazard_ratio):
     total = torch.tensor(0.0)
     for j in np.unique(event_time).astype(int):
         # H in original code (which subject has event at that time)
-        index_j = torch.min(event_time == j, event == 1).nonzero().data.numpy().flatten()
+        index_j = torch.min(
+            event_time == j,
+            event == 1
+        ).nonzero().data.numpy().flatten()
         """original paper didn't consider censored sample
         sum_plus = hazard_ratio[event_time >= j].sum()
         """
@@ -24,16 +28,20 @@ def coxph_logparlk(event_time, event, hazard_ratio):
         """original paper's version 
         sum_plus = hazard_ratio[torch.min(event_time >= j, event == 1)].sum()
         """
-        subtotal_1 = torch.log(hazard_ratio)[index_j].sum() if len(index_j) > 0 else torch.tensor(
+        subtotal_1 = torch.log(hazard_ratio)[index_j].sum() if len(
+            index_j) > 0 else torch.tensor(
             0.0)
 
-        # subtotal_2 = len(index_j) * torch.log(sum_plus)  # if no Efron correction considered
+        # subtotal_2 = len(index_j) * torch.log(sum_plus)
+        #  if no Efron correction considered
         # the Efron correction
         subtotal_2 = torch.tensor(0.0)
-        sum_j = hazard_ratio[index_j].sum() if len(index_j) > 0 else torch.tensor(0.0)
+        sum_j = hazard_ratio[index_j].sum() if len(
+            index_j) > 0 else torch.tensor(0.0)
         for l in range(len(index_j)):
-            subtotal_2 = torch.add(torch.log(sum_plus - l * 1.0 / len(index_j) * sum_j),
-                                   subtotal_2)
+            subtotal_2 = torch.add(
+                torch.log(sum_plus - l * 1.0 / len(index_j) * sum_j),
+                subtotal_2)
 
         total = subtotal_1 - subtotal_2 + total
     return torch.neg(total)
@@ -57,22 +65,20 @@ def acc_pairs(event, event_time):
         """
         acc_pair += [(i, j) for j in np.where(
             np.logical_and(event_time >= event_time[i], event == 0))[0]]
-        acc_pair += [(i, j) for j in event_index if event_time[j] > event_time[i]]
+        acc_pair += [(i, j) for j in event_index if
+                     event_time[j] > event_time[i]]
     acc_pair.sort(key=lambda x: x[0])
     return acc_pair
 
-
-# def sigmoid_concordance_loss(event_time, event, preds):
-#     """calculate sigmoid concordance loss function
-#
-#     :param event_time: tensor[batch_size]
-#     :param event: tensor[batch_size]
-#     :param preds: tensor(batch_size * len_time_units)
-#     """
+    # def sigmoid_concordance_loss(event_time, event, preds):
+    #     """calculate sigmoid concordance loss function
+    #
+    #     :param event_time: tensor[batch_size]
+    #     :param event: tensor[batch_size]
+    #     :param preds: tensor(batch_size * len_time_units)
+    #     """
+    """This function needs to be checked for correctness
     """
-        This function needs to be checked for correctness
-    """
-
 #     acc_pair = acc_pairs(event, event_time)
 #     preds = preds.data.numpy()
 #     m = len(event)  # batch_size
@@ -99,7 +105,8 @@ def c_index(event, event_time, hazard_ratio):
     """
     hazard_ratio = hazard_ratio.data.numpy()
     acc_pair = acc_pairs(event, event_time)
-    return sum([hazard_ratio[x[0]] > hazard_ratio[x[1]] for x in acc_pair]) * 1.0 / len(acc_pair)
+    return sum([hazard_ratio[x[0]] > hazard_ratio[x[1]] for x in
+                acc_pair]) * 1.0 / len(acc_pair)
 
 
 def auc_pairs(event, event_time, horizon):
@@ -128,6 +135,28 @@ def auc_jm(event, event_time, hazard_ratio, horizon):
     hazard_ratio = hazard_ratio.data.numpy()
     auc_pair = auc_pairs(event, event_time, horizon)
 
-    return sum([hazard_ratio[x[0]] > hazard_ratio[x[1]] for x in auc_pair]) * 1.0 / len(auc_pair)
+    return sum([hazard_ratio[x[0]] > hazard_ratio[x[1]] for x in
+                auc_pair]) * 1.0 / len(auc_pair)
 
 
+def dsn_loss(output, time_label, event):
+    n_sample = output.size()[0]
+
+    s1 = torch.cat((
+        torch.ones(n_sample, 1),
+        torch.cumprod(1 - output[:, :-1], dim=1)
+    ), dim=1)  # probability of survival to each time point
+
+    loss = torch.tensor(0.0)
+    for i in range(n_sample):
+        if event[i] == 0:
+            loss = torch.add(
+                loss,
+                torch.mul(s1[i, time_label[i]], 1 - output[i, time_label[i]])
+            )
+        else:
+            loss = torch.add(
+                loss,
+                torch.mul(s1[i, time_label[i]], output[i, time_label[i]])
+            )
+    return loss

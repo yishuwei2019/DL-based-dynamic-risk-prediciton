@@ -61,7 +61,7 @@ if __name__ == "__main__":
     TRUNCATE_TIME = 10  # preparing feature
     TARGET_TIME = 40  # target time
 
-    data = pd.read_pickle(os.path.join(os.path.dirname(__file__), 'data', 'data.pkl'))
+    data = pd.read_pickle(os.path.join(os.path.dirname(__file__), '..', 'data', 'data.pkl'))
     data = data[(data.ttocvd >= 0)]
 
     # label = 0: alive after TARGET_TIME, 1: dead before TARGET_TIME, 2: censored before TARGET_TIME
