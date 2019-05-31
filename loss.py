@@ -144,19 +144,16 @@ def dsn_loss(output, time_label, event):
 
     s1 = torch.cat((
         torch.ones(n_sample, 1),
-        torch.cumprod(1 - output[:, :-1], dim=1)
+        torch.cumprod(1 - output, dim=1)
     ), dim=1)  # probability of survival to each time point
 
     loss = torch.tensor(0.0)
     for i in range(n_sample):
-        if event[i] == 0:
+        loss = torch.add(loss, torch.log(s1[i, time_label[i]]))
+        if event[i] == 1:
             loss = torch.add(
                 loss,
-                torch.mul(s1[i, time_label[i]], 1 - output[i, time_label[i]])
+                torch.log(output[i, min(time_label[i], output.size()[1] - 1)])
             )
-        else:
-            loss = torch.add(
-                loss,
-                torch.mul(s1[i, time_label[i]], output[i, time_label[i]])
-            )
-    return loss
+
+    return torch.neg(loss)

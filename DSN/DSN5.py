@@ -32,7 +32,8 @@ def train(batch_size=100):
         train_loss += [loss.data]
         optimizer.step()
         count += 1
-    return train_loss
+
+    return train_loss[:-1]
 
 
 # noinspection PyShadowingNames
@@ -51,12 +52,13 @@ def test(batch_size=200):
         )
         test_loss += [loss.data]
         count += 1
-    return test_loss
+    return test_loss[:-1]
 
 
 if __name__ == "__main__":
     TRUNCATE_TIME = 10  # preparing feature
     TARGET_TIME = 40  # target time
+    UPGRADE_TIME = 55
 
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), '..', 'data', 'data.pkl'))
     data = data[(data.ttocvd >= 0)]
@@ -65,7 +67,7 @@ if __name__ == "__main__":
     )
     FEATURE_LIST = data.columns[3:]
 
-    # discretize time into 5 buckets
+    ## discretize time into 5 buckets
     data['label'] = 0
     data.loc[data['ttocvd'] < 20, 'label'] = 0
     data.loc[(data['ttocvd'] >= 20) & (data['ttocvd'] < 25), 'label'] = 1
@@ -77,14 +79,14 @@ if __name__ == "__main__":
     data.loc[(data['ttocvd'] >= 23) & (data['ttocvd'] < 25) & (data['cvd'] == 0), 'label'] = 2
     data.loc[(data['ttocvd'] >= 28) & (data['ttocvd'] < 30) & (data['cvd'] == 0), 'label'] = 3
     data.loc[(data['ttocvd'] >= 36) & (data['cvd'] == 0), 'label'] = 4
+    data.loc[(data['ttocvd'] > 50) & (data['cvd'] == 0), 'label'] = 5
 
-    d_in, h, d_out = 35, 64, 16
-    model = DSNet(35, 70, 5)
+    model = DSNet(35, 210, 5)
     param = deepcopy(model.state_dict())
 
     batch_size = 200
-    n_epochs = 30
-    learning_rate = .1
+    n_epochs = 20
+    learning_rate = .01
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 5, gamma=.1)
     train_set, test_set = train_test_split(data, .3)
@@ -105,7 +107,7 @@ if __name__ == "__main__":
         auc_test = auc_jm(
             torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor),
             torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),
-            model(x_test)[:, 1],
+            model(x_test)[:, 0],
             TARGET_TIME
         )
         print("ten year auc:", auc_test)

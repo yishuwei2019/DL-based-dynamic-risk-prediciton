@@ -105,7 +105,6 @@ class SurvDl(nn.Module):
 
 class CNet(nn.Module):
     """classification network"""
-
     def __init__(self, d_in, h_1, d_out):
         super(CNet, self).__init__()
         self.fc_layer = nn.Sequential(
@@ -122,7 +121,6 @@ class CNet(nn.Module):
 
 class DSNet(nn.Module):
     """discreate survival network"""
-
     def __init__(self, d_in, h_1, d_out):
         super(DSNet, self).__init__()
         self.fc_layer = nn.Sequential(
