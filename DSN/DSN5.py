@@ -57,8 +57,6 @@ def test(batch_size=200):
 
 if __name__ == "__main__":
     TRUNCATE_TIME = 10  # preparing feature
-    TARGET_TIME = 40  # target time
-    UPGRADE_TIME = 55
 
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), '..', 'data', 'data.pkl'))
     data = data[(data.ttocvd >= 0)]
@@ -102,14 +100,19 @@ if __name__ == "__main__":
 
     train_loss = []
     test_loss = []
+    test_event = torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor)
+    test_time = torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor)
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
-        auc_test = auc_jm(
-            torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor),
-            torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),
-            model(x_test)[:, 0],
-            TARGET_TIME
-        )
+        pred = 1 - torch.cumprod(1 - model(x_test), dim=1)
+        print(torch.mean(model(x_test), dim=0))
+
+        auc_test = [
+            auc_jm(test_event, test_time, pred[:, 0], 20),
+            auc_jm(test_event, test_time, pred[:, 1], 25),
+            auc_jm(test_event, test_time, pred[:, 2], 30),
+            auc_jm(test_event, test_time, pred[:, 3], 40),
+        ]
         print("ten year auc:", auc_test)
 
         scheduler.step()

@@ -57,9 +57,6 @@ def test(batch_size=200):
 
 if __name__ == "__main__":
     TRUNCATE_TIME = 10  # preparing feature
-    TARGET_TIME = 30  # target time
-    UPGRADE_TIME = 40
-
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), '..', 'data', 'data.pkl'))
     data = data[(data.ttocvd >= 0)]
     data = data_short_formatting(
@@ -67,10 +64,11 @@ if __name__ == "__main__":
     )
     FEATURE_LIST = data.columns[3:]
 
-    data['label'] = (data['ttocvd'] > TARGET_TIME).astype('int')
-    data.loc[(data['ttocvd'] >= UPGRADE_TIME, 'label')] = 2  # actual label will be greater than time interval
+    data['label'] = data['ttocvd'] - 14
+    data.loc[data['ttocvd'] < 15, 'label'] = 0
+    data.loc[data['ttocvd'] > 50, 'label'] = 37
 
-    model = DSNet(35, 210, 2)
+    model = DSNet(35, 210, 37)
     param = deepcopy(model.state_dict())
 
     batch_size = 200
@@ -91,15 +89,20 @@ if __name__ == "__main__":
 
     train_loss = []
     test_loss = []
+    test_event = torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor)
+    test_time = torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor)
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
-        auc_test = auc_jm(
-            torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor),
-            torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),
-            model(x_test)[:, 0],
-            TARGET_TIME
-        )
-        print(torch.mean(model(x_test), dim=0))
+        pred = 1 - torch.cumprod(1 - model(x_test), dim=1)
+        # print(torch.mean(model(x_test), dim=0))
+        print(torch.mean(pred, dim=0)[[6, 11, 16, 26]])
+
+        auc_test = [
+            auc_jm(test_event, test_time, pred[:, 6], 20),
+            auc_jm(test_event, test_time, pred[:, 11], 25),
+            auc_jm(test_event, test_time, pred[:, 16], 30),
+            auc_jm(test_event, test_time, pred[:, 26], 40),
+        ]
         print("ten year auc:", auc_test)
 
         scheduler.step()
