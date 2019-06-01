@@ -71,10 +71,10 @@ if __name__ == "__main__":
     data = data_short_formatting(
         data, ['label', 'cvd', 'ttocvd'] + BASE_COVS + INDICATORS, MARKERS, TRUNCATE_TIME
     )
-    FEATURE_LIST = data.columns[4:]
+    FEATURE_LIST = data.columns[4:-3]
 
     d_in, h, d_out = 35, 64, 16
-    model = CNet(35, 70, 2)
+    model = CNet(32, 70, 2)
     param = deepcopy(model.state_dict())
 
     batch_size = 200

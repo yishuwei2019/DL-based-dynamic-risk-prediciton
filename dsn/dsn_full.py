@@ -62,13 +62,13 @@ if __name__ == "__main__":
     data = data_short_formatting(
         data, ['cvd', 'ttocvd'] + BASE_COVS + INDICATORS, MARKERS, TRUNCATE_TIME
     )
-    FEATURE_LIST = data.columns[3:]
+    FEATURE_LIST = data.columns[3:-3]
 
     data['label'] = data['ttocvd'] - 14
     data.loc[data['ttocvd'] < 15, 'label'] = 0
     data.loc[data['ttocvd'] > 50, 'label'] = 37
 
-    model = DSNet(35, 210, 37)
+    model = DSNet(32, 210, 37)
     param = deepcopy(model.state_dict())
 
     batch_size = 200

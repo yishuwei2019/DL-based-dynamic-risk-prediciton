@@ -116,5 +116,5 @@ SHORT_FEATURES = [
     'HDLCHL_med',
     'SBP_med',
     'DBP_med',
-    'age_med'
+    'age_min'
 ]

@@ -57,7 +57,7 @@ def test(batch_size=200):
 
 if __name__ == "__main__":
     TRUNCATE_TIME = 10  # preparing feature
-    TARGET_TIME = 30  # target time
+    TARGET_TIME = 20  # target time
     UPGRADE_TIME = 40
 
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), '..', 'data', 'data.pkl'))
@@ -65,12 +65,12 @@ if __name__ == "__main__":
     data = data_short_formatting(
         data, ['cvd', 'ttocvd'] + BASE_COVS + INDICATORS, MARKERS, TRUNCATE_TIME
     )
-    FEATURE_LIST = data.columns[3:]
+    FEATURE_LIST = data.columns[3:-3]  # only care about age_min
 
     data['label'] = (data['ttocvd'] > TARGET_TIME).astype('int')
     data.loc[(data['ttocvd'] >= UPGRADE_TIME, 'label')] = 2  # actual label will be greater than time interval
 
-    model = DSNet(35, 210, 2)
+    model = DSNet(32, 210, 2)
     param = deepcopy(model.state_dict())
 
     batch_size = 200
@@ -93,6 +93,8 @@ if __name__ == "__main__":
     test_loss = []
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
+        # print(test_set[(test_set['cvd'] == 1) & (test_set['ttocvd'] <= TARGET_TIME)].shape[0] / test_set.shape[0])
+
         auc_test = auc_jm(
             torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor),
             torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),

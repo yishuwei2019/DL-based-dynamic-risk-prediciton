@@ -63,7 +63,7 @@ if __name__ == "__main__":
     data = data_short_formatting(
         data, ['cvd', 'ttocvd'] + BASE_COVS + INDICATORS, MARKERS, TRUNCATE_TIME
     )
-    FEATURE_LIST = data.columns[3:]
+    FEATURE_LIST = data.columns[3:-3]
 
     ## discretize time into 5 buckets
     data['label'] = 0
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     data.loc[(data['ttocvd'] >= 36) & (data['cvd'] == 0), 'label'] = 4
     data.loc[(data['ttocvd'] > 50) & (data['cvd'] == 0), 'label'] = 5
 
-    model = DSNet(35, 210, 5)
+    model = DSNet(32, 210, 5)
     param = deepcopy(model.state_dict())
 
     batch_size = 200

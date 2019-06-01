@@ -77,9 +77,9 @@ if __name__ == '__main__':
         TRUNCATE_TIME
     )
     # data = data[(data.ttocvd >= 0) & (data.ttocvd < TARGET_END)]
-    FEATURE_LIST = data.columns[3:]
+    FEATURE_LIST = data.columns[3:-3]
 
-    d_in, h, d_out = 35, 64, 16
+    d_in, h, d_out = 32, 64, 16
     time_bin, num_time_units = 30, 24  # 24 months
     model = SurvDl(d_in, h, d_out, num_time_units)
     param = deepcopy(model.state_dict())

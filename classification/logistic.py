@@ -13,7 +13,7 @@ from utils import train_test_split
 
 if __name__ == "__main__":
     TRUNCATE_TIME = 10
-    TARGET_END = 15
+    TARGET_END = 20
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), '..', 'data', 'data.pkl'))
     data = data[(data.ttocvd >= 0)]
 
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     data = data_short_formatting(
         data, ['label', 'cvd', 'ttocvd'] + BASE_COVS + INDICATORS, MARKERS, TRUNCATE_TIME
     )
-    FEATURE_LIST = data.columns[4:]
+    FEATURE_LIST = data.columns[4:-3]
     train_set, test_set = train_test_split(data, .3)
 
     clf = LogisticRegression(solver='lbfgs').fit(
