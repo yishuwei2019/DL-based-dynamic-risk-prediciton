@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from copy import deepcopy
 from common import *
@@ -65,7 +64,6 @@ if __name__ == "__main__":
     data.label = data.label.astype('int32')
     # delete unclear subjects
     data = data.loc[(data.ttocvd > TARGET_TIME) | (data.cvd == 1), :]
-    # data.loc[(data.ttocvd <= TARGET_TIME) & (data.cvd == 0), 'label'] = 2
 
     data = data_short_formatting(
         data, ['label', 'cvd', 'ttocvd'] + BASE_COVS + INDICATORS, MARKERS, TRUNCATE_TIME

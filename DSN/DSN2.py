@@ -93,8 +93,6 @@ if __name__ == "__main__":
     test_loss = []
     for epoch in range(n_epochs):
         print("*************** new epoch ******************")
-        # print(test_set[(test_set['cvd'] == 1) & (test_set['ttocvd'] <= TARGET_TIME)].shape[0] / test_set.shape[0])
-
         auc_test = auc_jm(
             torch.from_numpy(test_set['cvd'].values).type(torch.IntTensor),
             torch.from_numpy(test_set['ttocvd'].values).type(torch.IntTensor),

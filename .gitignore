@@ -6,3 +6,6 @@ __pycache__/
 debug/*
 example.py
 *.pth
+
+loss_original.py
+joint_model/*

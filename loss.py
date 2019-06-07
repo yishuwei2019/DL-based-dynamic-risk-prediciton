@@ -67,32 +67,6 @@ def acc_pairs(event, event_time):
     acc_pair.sort(key=lambda x: x[0])
     return acc_pair
 
-    # def sigmoid_concordance_loss(event_time, event, preds):
-    #     """calculate sigmoid concordance loss function
-    #
-    #     :param event_time: tensor[batch_size]
-    #     :param event: tensor[batch_size]
-    #     :param preds: tensor(batch_size * len_time_units)
-    #     """
-    """This function needs to be checked for correctness
-    """
-#     acc_pair = acc_pairs(event, event_time)
-#     preds = preds.data.numpy()
-#     m = len(event)  # batch_size
-#
-#     # noinspection PyShadowingNames
-#     def sigmoid_loss(x, preds=preds):
-#         """
-#         :param x: tuple(i, j)
-#         :param preds: tensor(batch_size * len_time_units)
-#         """
-#         i, j = x[0], x[1]
-#         fi, fj = preds[i][event_time[i]], preds[j][event_time[j]]
-#         return 1 - torch.log(1 + torch.exp(fi - fj)) / torch.log(2)
-#
-#     total = sum(list(map(sigmoid_loss, acc_pair))) * 1.0 / (m ** 2 - m)
-#     return torch.tensor(-total, requires_grad=True)
-
 
 def c_index(event, event_time, hazard_ratio):
     """calculate c-index
