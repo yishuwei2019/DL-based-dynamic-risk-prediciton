@@ -13,7 +13,7 @@ from utils import train_test_split
 
 if __name__ == "__main__":
     TRUNCATE_TIME = 10
-    TARGET_END = 20
+    TARGET_END = 40
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), '..', 'data', 'data.pkl'))
     data = data[(data.ttocvd >= 0)]
 
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         torch.Tensor(test_set.loc[:, 'label'].values),
         torch.Tensor(test_set.loc[:, 'ttocvd'].values),
         torch.Tensor(clf.predict_proba(test_set.loc[:, FEATURE_LIST].values)[:, 1]),
-        10
+        TARGET_END
     ))
 
 

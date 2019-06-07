@@ -5,7 +5,7 @@ import torch
 import torch.optim as optim
 from copy import deepcopy
 from common import *
-from loss import auc_jm, dsn_loss
+from loss import auc_jm, dsn_loss, c_index
 from models import DSNet
 from preprocess import data_short_formatting
 from utils import train_test_split, param_change, plot_loss
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     param = deepcopy(model.state_dict())
 
     batch_size = 200
-    n_epochs = 20
+    n_epochs = 30
     learning_rate = .01
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 5, gamma=.1)
@@ -104,6 +104,13 @@ if __name__ == "__main__":
             auc_jm(test_event, test_time, pred[:, 26], 40),
         ]
         print("ten year auc:", auc_test)
+        cindex = [
+            c_index(test_event, test_time, pred[:, 6]),
+            c_index(test_event, test_time, pred[:, 11]),
+            c_index(test_event, test_time, pred[:, 16]),
+            c_index(test_event, test_time, pred[:, 26]),
+        ]
+        print("c index:", cindex)
 
         scheduler.step()
         for param_group in optimizer.param_groups:

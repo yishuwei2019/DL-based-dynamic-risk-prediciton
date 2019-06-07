@@ -33,7 +33,6 @@ def train(batch_size=100):
         train_loss += [loss.data]
         optimizer.step()
         count += 1
-    print(train_loss)
     return train_loss[:-1]
 
 
@@ -56,7 +55,7 @@ def test(batch_size=200):
 
 if __name__ == "__main__":
     TRUNCATE_TIME = 10  # preparing feature
-    TARGET_TIME = 40  # target time
+    TARGET_TIME = 30  # target time
 
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), '..', 'data', 'data.pkl'))
     data = data[(data.ttocvd >= 0)]
@@ -79,7 +78,7 @@ if __name__ == "__main__":
 
     batch_size = 200
     n_epochs = 30
-    learning_rate = .1
+    learning_rate = .01
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 5, gamma=.1)

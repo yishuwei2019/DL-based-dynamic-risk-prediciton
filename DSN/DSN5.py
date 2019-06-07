@@ -83,7 +83,7 @@ if __name__ == "__main__":
     param = deepcopy(model.state_dict())
 
     batch_size = 200
-    n_epochs = 20
+    n_epochs = 30
     learning_rate = .01
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, 5, gamma=.1)

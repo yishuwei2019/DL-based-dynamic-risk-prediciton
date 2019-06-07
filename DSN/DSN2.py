@@ -57,7 +57,7 @@ def test(batch_size=200):
 
 if __name__ == "__main__":
     TRUNCATE_TIME = 10  # preparing feature
-    TARGET_TIME = 20  # target time
+    TARGET_TIME = 40  # target time
     UPGRADE_TIME = 40
 
     data = pd.read_pickle(os.path.join(os.path.dirname(__file__), '..', 'data', 'data.pkl'))
@@ -101,6 +101,7 @@ if __name__ == "__main__":
             model(x_test)[:, 0],
             TARGET_TIME
         )
+
         print(torch.mean(model(x_test), dim=0))
         print("ten year auc:", auc_test)
 

@@ -9,8 +9,8 @@ from loss import coxph_logparlk, c_index, auc_jm
 
 DIR = '/users/yishu/documents/dl_medical/Rcode/data'
 
-# cox_simple_res = pd.read_csv(os.path.join(DIR, 'cox_simple_res.csv'), delimiter=',')
-# cox_complex_res = pd.read_csv(os.path.join(DIR, 'cox_complex_res.csv'), delimiter=',')
+cox_simple_res = pd.read_csv(os.path.join(DIR, 'cox_simple_res.csv'), delimiter=',')
+cox_complex_res = pd.read_csv(os.path.join(DIR, 'cox_complex_res.csv'), delimiter=',')
 # print(c_index(
 #     torch.tensor(cox_simple_res.event),
 #     torch.tensor(round(cox_simple_res.event_time)),
@@ -22,9 +22,10 @@ DIR = '/users/yishu/documents/dl_medical/Rcode/data'
 #     torch.tensor(cox_complex_res.hazard_ratio)
 # ))
 
-
 jm_simple_res = pd.read_csv(os.path.join(DIR, 'jm_simple_res.csv'), delimiter=',')
 jm_complex_res = pd.read_csv(os.path.join(DIR, 'jm_complex_res.csv'), delimiter=',')
+# print(pd.concat([jm_simple_res, cox_simple_res['hazard_ratio']], axis=1))
+
 for horizon in [20, 25, 30]:
     print("horizon is", horizon)
     print(
@@ -46,3 +47,14 @@ for horizon in [20, 25, 30]:
             horizon
         )
     )
+
+    print(c_index(
+        torch.tensor(jm_simple_res.event),
+        torch.tensor(round(jm_simple_res.event_time)),
+        1 - torch.tensor(jm_simple_res[str(horizon)])
+    ))
+    print(c_index(
+        torch.tensor(jm_complex_res.event),
+        torch.tensor(round(jm_complex_res.event_time)),
+        1 - torch.tensor(jm_complex_res[str(horizon)])
+    ))

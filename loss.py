@@ -16,28 +16,25 @@ def coxph_logparlk(event_time, event, hazard_ratio):
     total = torch.tensor(0.0)
     for j in np.unique(event_time).astype(int):
         # H in original code (which subject has event at that time)
-        index_j = torch.min(
-            event_time == j,
-            event == 1
+        index_j = torch.min(event_time == j, event == 1
         ).nonzero().data.numpy().flatten()
-        """original paper didn't consider censored sample
-        sum_plus = hazard_ratio[event_time >= j].sum()
-        """
         sum_plus = hazard_ratio[event_time >= j].sum()
 
-        """original paper's version 
+        """original paper's version, didn't consider censored sample 
         sum_plus = hazard_ratio[torch.min(event_time >= j, event == 1)].sum()
         """
-        subtotal_1 = torch.log(hazard_ratio)[index_j].sum() if len(
-            index_j) > 0 else torch.tensor(
-            0.0)
+
+        if len(index_j) > 0:
+            subtotal_1 = torch.log(hazard_ratio)[index_j].sum()
+            sum_j = hazard_ratio[index_j].sum()
+        else:
+            subtotal_1 = torch.tensor(0.0)
+            sum_j = torch.tensor(0.0)
 
         # subtotal_2 = len(index_j) * torch.log(sum_plus)
         #  if no Efron correction considered
         # the Efron correction
         subtotal_2 = torch.tensor(0.0)
-        sum_j = hazard_ratio[index_j].sum() if len(
-            index_j) > 0 else torch.tensor(0.0)
         for l in range(len(index_j)):
             subtotal_2 = torch.add(
                 torch.log(sum_plus - l * 1.0 / len(index_j) * sum_j),
